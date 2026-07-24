@@ -592,7 +592,7 @@ We have demonstrated that classical GPU compilation techniques — kernel fusion
 ## 14. References (Key Papers)
 
 1. Murali, P., et al. (2019). "Noise-Adaptive Compiler for Superconducting Quantum Computers." *ASPLOS*.
-2. Seymor, S., et al. (2021). "t|ket⟩: A Transpiler for Quantum Computing." *arXiv:21XX.XXXXX*.
+2. Seymore, S., et al. (2021). "t|ket⟩: An Extendable Optimizer for Quantum Compilers." *arXiv:2106.01258*.
 3. Temme, K., et al. (2017). "Error Mitigation for Short-Depth Quantum Circuits." *PRL*.
 4. Kandala, A., et al. (2019). "Error-Mitigated Quantum Optimization." *Nature*.
 5. Peng, B., et al. (2020). "Simulating Large Quantum Circuits on a Small Quantum Computer." *PRL*.

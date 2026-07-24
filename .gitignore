@@ -15,6 +15,10 @@ env/
 dist/
 build/
 *.egg-info/
+*.egg
+*.whl
+*.so
+.eggs/
 
 # IDE
 .vscode/
@@ -31,10 +35,25 @@ Thumbs.db
 .coverage
 htmlcov/
 
+# Type checking / linting
+.mypy_cache/
+.ruff_cache/
+
 # Results (keep directory, ignore large outputs)
 results/*.png
 results/*.csv
 results/*.json
+results/*.h5
+results/*.hdf5
 
 # Environment
 .env
+
+# Security — IBM Quantum credentials
+*_credentials*.json
+*_token*.json
+ibm_quantum_token*
+qiskitrc
+
+# Python version management
+.python-version
