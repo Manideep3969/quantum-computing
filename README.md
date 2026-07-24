@@ -20,7 +20,7 @@ We draw a systematic analogy between classical GPU compilation for deep learning
 - **Paper outline:** `docs/notes/06-paper-outline.md`
 - **Project timeline:** `docs/notes/07-project-timeline.md`
 - **Target venue:** IEEE TQE / Quantum
-- **Target submission:** February 2027
+- **Target submission:** January 2027 (6-month timeline), hard deadline February 15, 2027
 
 ## Project Structure
 
@@ -38,13 +38,20 @@ quantum-computing/
 │   └── papers/                          # Reference papers and summaries
 ├── notebooks/              # Jupyter notebooks for experiments and demos
 ├── src/
-│   ├── algorithms/         # Quantum algorithm implementations
-│   ├── circuits/           # Quantum circuit constructions
-│   ├── simulators/          # Simulation utilities
-│   └── utils/              # Helper functions and utilities
-├── tests/                  # Test suite
-├── results/                # Experiment results and outputs
-└── benchmarks/             # Performance benchmarks
+│   └── qc_compiler/
+│       ├── __init__.py           # Package entry point
+│       ├── cost_model.py         # Unified error cost model
+│       ├── fusion.py             # Gate fusion (Optimization 1)
+│       ├── cutting.py            # Circuit cutting (Optimization 2)
+│       ├── mitigation.py         # Adaptive error mitigation (Optimization 3)
+│       ├── scheduling.py         # Decoherence budget optimization (Optimization 4)
+│       ├── batching.py           # Circuit batching (Optimization 5)
+│       ├── autotuning.py         # Hardware-aware autotuning (Optimization 6)
+│       ├── transpiler.py         # Qiskit Transpiler integration
+│       └── utils.py             # Shared utilities
+├── tests/                        # Test suite
+├── results/                      # Experiment results and outputs
+└── benchmarks/                   # Performance benchmarks
 ```
 
 ## Getting Started
@@ -60,6 +67,7 @@ quantum-computing/
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+pip install -e .    # Install qc-compiler in development mode
 ```
 
 ### Running Notebooks
