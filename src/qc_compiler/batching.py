@@ -4,7 +4,7 @@ Analogous to batched inference in GPU serving, this module groups
 circuits sharing the same unitary core to amortize execution overhead.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from qiskit import QuantumCircuit
