@@ -7,139 +7,151 @@
 
 ---
 
-## 1. The Opportunity
+## Hey, here's what I want to do and why I think it matters.
 
-Quantum computing is transitioning from theoretical research to practical engineering. IBM, Google, and others now offer cloud-based quantum hardware, but current quantum circuits run with 0.5–1% error rates per gate and qubits that decohere in microseconds. The bottleneck is no longer just physics — it's **compilation and optimization**.
+I want to publish a research paper that bridges two worlds I work in every day — GPU optimization and quantum computing. Here's the thing: quantum computers have a compilation and optimization problem that looks *exactly* like the problems we already solve for GPUs. Nobody has formalized this connection or benchmarked it on real hardware.
 
-This is exactly the kind of systems optimization problem our team solves for GPUs every day.
-
-**The insight:** The same optimization techniques we use for GPU workloads — kernel fusion, model parallelism, mixed precision, memory bandwidth optimization, batched inference, and autotuning — have direct analogs in quantum circuit compilation. Nobody has formalized this analogy or systematically benchmarked it on real hardware.
-
-That's what this paper does.
+I think we have a unique window here. Let me walk you through it.
 
 ---
 
-## 2. What We're Building
+## The Problem
 
-An open-source Python framework called **qc-compiler** that adapts six proven GPU optimization techniques to quantum circuits:
+Quantum hardware is real now. You can literally SSH into an IBM quantum computer and run circuits. But the circuits are noisy — every gate has ~1% error, qubits lose coherence in microseconds, and the devices have weird topologies that force extra operations.
 
-| GPU Technique | Quantum Analog | What It Does |
-|---|---|---|
-| Kernel fusion | Gate fusion | Merge sequential quantum gates to reduce depth and error |
-| Model parallelism (tensor/pipeline) | Circuit cutting | Split circuits across qubit constraints, reconstruct via classical post-processing |
-| Mixed-precision training | Adaptive error mitigation (ZNE) | Allocate more measurement resources to sensitive circuit segments, like using FP16 where precision loss is tolerable |
-| Memory-bandwidth optimization (FlashAttention) | Decoherence budget scheduling | Prioritize gates on low-coherence qubits, like scheduling kernels to minimize DRAM traffic |
-| Batched inference | Circuit batching | Group circuits sharing the same unitary core, amortize hardware overhead |
-| Kernel autotuning (TVM, Triton) | Hardware-aware transpilation | Search over transpiler configurations, benchmark on device, cache the best one |
+Sound familiar? It's the same class of problem as:
 
-The framework integrates with Qiskit (IBM's quantum SDK) and runs on IBM Quantum free-tier hardware.
+- GPUs with limited memory → you shard models across devices
+- GPUs with varying precision → you use mixed FP16/FP32 training
+- GPUs with kernel launch overhead → you fuse kernels together
+- GPUs with device-specific quirks → you autotune kernels
+
+Quantum researchers treat these as separate, ad-hoc problems. We see them as *one* problem we've already solved.
 
 ---
 
-## 3. Why This Paper Is Publishable
+## The Idea
 
-1. **Novel framing** — Nobody has systematically mapped GPU optimization to quantum compilation. This is a fresh perspective that quantum researchers don't bring because they don't have our background.
+We take six optimization techniques we already understand from GPU work and map them to quantum circuits:
 
-2. **Practical results on real hardware** — We benchmark on IBM Quantum devices (ibm_brisbane, ibm_sherbrooke, ibm_osaka), not just simulators. Real hardware results are what reviewers want.
+**1. Kernel Fusion → Gate Fusion**
 
-3. **Open-source artifact** — `qc-compiler` will be pip-installable with a DOI on Zenodo. Journals increasingly require reproducible code artifacts.
+Just like fusing CUDA kernels eliminates global memory round-trips, fusing sequential quantum gates reduces circuit depth and accumulated error. Same idea, different domain.
 
-4. **Timely** — Quantum circuit optimization is one of the hottest topics in 2024–2026 (PRX Quantum, Quantum, IEEE TQE are actively seeking this work). The Google below-threshold demonstration (Nature, 2023) and IBM's 1000+ qubit roadmap make compilation more critical than ever.
+**2. Model Parallelism → Circuit Cutting**
 
-5. **The analogy is defensible** — We formalize it with mathematical cost models (Section 4 of the paper) and explicitly discuss where it breaks down (Section 12), which reviewers will respect.
+When a model doesn't fit on one GPU, you split it across devices and communicate. When a quantum circuit has too many qubits or too much routing overhead, you cut it, run subcircuits, and reconstruct classically. The tradeoff is the same: communication cost vs. fit-on-device benefit.
+
+**3. Mixed Precision → Adaptive Error Mitigation**
+
+Mixed-precision training uses FP16 for the forward pass (fast, less accurate) and FP32 for the master weights (slow, accurate). Zero-Noise Extrapolation (ZNE) runs circuits at multiple noise levels and extrapolates to zero noise. It's literally the same trick — run at different "precisions" and recover the high-accuracy answer.
+
+**4. Memory Bandwidth Optimization → Decoherence Budget Scheduling**
+
+FlashAttention keeps data in SRAM to avoid slow DRAM trips. We schedule quantum gates to keep qubits active before they decohere, prioritizing low-T₂ qubits the same way you prioritize data on slow memory channels.
+
+**5. Batched Inference → Circuit Batching**
+
+GPUs batch inference requests to amortize kernel launch overhead. We batch quantum circuits that share the same unitary core (like VQE measuring different observables) to amortize calibration and initialization overhead.
+
+**6. Kernel Autotuning → Hardware-Aware Transpilation**
+
+TVM and Triton search over kernel implementation variants and benchmark on the target GPU. We search over Qiskit transpiler configurations (routing, layout, optimization level) and benchmark on the target quantum device. Same playbook.
 
 ---
 
-## 4. Expected Results
+## Why This Is Publishable
 
-Based on the literature and preliminary analysis, we project:
+Three reasons this paper works:
 
-| Optimization | Expected Improvement |
+**First, it's a novel angle.** The quantum optimization community doesn't think like systems engineers. They're physicists. When they see a compilation problem, they reach for group theory. When we see one, we reach for cost models and autotuning. That perspective gap is our advantage — nobody has written this paper yet because nobody with our background has tried.
+
+**Second, we're testing on real hardware.** Most quantum optimization papers run on simulators. We run on IBM Quantum's actual 127-qubit devices. Reviewers at top venues (IEEE TQE, Quantum, PRX Quantum) want to see results on real hardware, and we can deliver that using the free tier.
+
+**Third, we're releasing open-source code.** A pip-installable framework called `qc-compiler` that anyone can use. Journals increasingly require reproducible artifacts, and we'll have a DOI-traced package on Zenodo.
+
+---
+
+## What We Expect to See
+
+Based on the literature and the math, here's what we project:
+
+| Optimization | What We Expect |
 |---|---|
-| Gate fusion | 20–50% depth reduction, 10–30% fidelity improvement |
-| Circuit cutting | Enables >127-qubit circuits on 127-qubit devices; reduces error for high-SWAP circuits |
-| Adaptive error mitigation | 2–3× fewer shots for same fidelity (or higher fidelity for same shots) |
-| Decoherence scheduling | 15–30% idle-time reduction, 5–15% fidelity improvement |
-| Circuit batching | 2–3× throughput for VQE, 1.5–2× for QAOA |
-| Hardware-aware autotuning | 10–40% fidelity improvement over Qiskit defaults |
-| **End-to-end combined** | **2–5× fidelity improvement with manageable overhead** |
+| Gate fusion | 20–50% shorter circuits, 10–30% better fidelity |
+| Circuit cutting | Run bigger circuits than the device allows; reduce SWAP overhead |
+| Adaptive error mitigation | 2–3× fewer measurements for the same accuracy |
+| Decoherence scheduling | 15–30% less qubit idle time |
+| Circuit batching | 2–3× throughput improvement for common workloads |
+| Autotuning | 10–40% better than Qiskit's default settings |
+
+When we stack all six together, we're targeting a **2–5× improvement in circuit fidelity**. Even if we only get half of that, it's a strong paper.
 
 ---
 
-## 5. Research Plan (6 Months)
+## The Plan (6 Months)
 
-| Phase | Period | Deliverable |
-|---|---|---|
-| **Phase 1: Foundation** | Weeks 1–4 (Aug 2026) | Literature review, baseline benchmarks on IBM Quantum, annotated bibliography |
-| **Phase 2: Core Algorithms** | Weeks 5–10 (Sep–Oct) | Implement gate fusion, circuit cutting, adaptive error mitigation; collect results |
-| **Phase 3: Advanced Optimizations** | Weeks 11–16 (Nov) | Implement decoherence scheduling, circuit batching, autotuning; collect results |
-| **Phase 4: Integration** | Weeks 17–20 (Dec) | Integrate all six into `qc-compiler`, end-to-end evaluation, package release |
-| **Phase 5: Writing** | Weeks 21–26 (Jan–Feb 2027) | Draft paper, revise, submit to IEEE TQE or Quantum |
+**Phase 1 — Foundation (August):** Read 15–20 key papers, set up IBM Quantum access, run baseline benchmarks. Deliverable: baseline dataset + annotated bibliography.
 
-**Estimated effort:** ~15–20 hours/week (~480 hours total)
+**Phase 2 — Core Algorithms (September–October):** Implement gate fusion, circuit cutting, and adaptive error mitigation. These are the three most impactful optimizations. Deliverable: working code + experimental results on hardware.
 
----
+**Phase 3 — Advanced Optimizations (November):** Implement decoherence scheduling, circuit batching, and autotuning. Deliverable: all six optimizations working + results on hardware.
 
-## 6. Resources Required
+**Phase 4 — Integration (December):** Package everything into `qc-compiler`, run the end-to-end evaluation (all six stacked together). Deliverable: pip-installable package + combined results.
 
-| Resource | Cost | Notes |
-|---|---|---|
-| IBM Quantum free tier | $0 | 127-qubit devices, ~10 min/day queue time |
-| Qiskit, PennyLane, Cirq | $0 | Open-source |
-| Cloud compute (simulations) | $0–50/month | Local machine sufficient for most work |
-| arXiv preprint hosting | $0 | Free |
-| Open-access publication (if Quantum journal) | $0 | Community-run, no APC |
-| Open-access publication (if IEEE TQE) | ~$2,150 | If accepted, publication fee |
+**Phase 5 — Writing (January–February 2027):** Draft the paper, get feedback from colleagues, revise, submit. Deliverable: submitted paper + arXiv preprint.
 
-**Total estimated cost: $0–$2,200** (depending on venue choice)
+I'm estimating ~15–20 hours per week, so roughly 480 hours over 6 months. This is designed to be sustainable alongside regular work.
 
 ---
 
-## 7. What This Delivers to the Team
+## What This Gives Us
 
-Beyond the paper itself:
+Beyond the paper itself, here's what the team gets out of this:
 
-1. **Deep expertise in a growing field** — Quantum computing optimization is a $50B+ market by 2030. Understanding it from a systems perspective is rare and valuable.
+**Deep expertise in a hot field.** Quantum computing is projected to be a $50B+ market by 2030. Understanding it from a systems perspective is rare — most people in this space are physicists. Our angle is genuinely different.
 
-2. **Transferable skills** — The formal optimization framework (cost models, resource budgets, autotuning) applies directly back to our GPU/ML work. The quantum perspective sharpens our classical thinking.
+**Skills that transfer back.** The cost models, resource budgeting, and autotuning frameworks we build for quantum circuits apply directly to GPU work. Thinking about quantum sharpens our classical optimization thinking too.
 
-3. **Open-source portfolio** — A published, pip-installable package with a DOI demonstrates engineering rigor and research capability.
+**Credibility and visibility.** A published paper at IEEE TQE or Quantum, plus an open-source package people actually use, signals serious research and engineering capability.
 
-4. **Industry positioning** — A paper at IEEE TQE or Quantum positions us as bridge-builders between classical systems and quantum, which is exactly where the field is heading.
-
-5. **Recruiting signal** — Publications in quantum computing attract strong candidates across both classical and quantum engineering.
+**First-mover advantage on this angle.** The GPU↔quantum analogy is sitting there unexplored. The longer we wait, the more likely someone else connects the same dots.
 
 ---
 
-## 8. Risk Assessment
+## What Could Go Wrong
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| IBM Quantum queue times too long | Medium | Delays experiments by 1–2 weeks | Use Aer simulator for development; batch hardware runs; use 3 IBM devices in parallel |
-| Optimizations show marginal improvement | Low | Weak paper contribution | Focus on techniques showing >10% improvement; if all marginal, pivot to "why classical analogies fail" angle |
-| Device calibration drift mid-experiment | Medium | Inconsistent results | Record calibration data with each run; run all experiments per technique in a 1–2 day window |
-| Qiskit API breaking changes | Low | Code breaks | Pin all dependency versions; use stable APIs only |
-| Paper rejected | Medium | 3–6 month delay | Submit to backup venue; incorporate reviewer feedback |
+I want to be upfront about the risks:
 
----
+**Hardware queue times.** IBM Quantum free tier has queues. Mitigation: do all development on the local simulator, batch hardware runs, and spread experiments across three available devices.
 
-## 9. Why Now
+**Marginal improvements.** What if some optimizations don't move the needle much? Mitigation: we focus on the ones that do. And even a negative result — "here's where the GPU analogy breaks down" — is publishable and interesting.
 
-- IBM has 127+ qubit devices on free tier (2024–2026)
-- Google demonstrated below-threshold error correction (2023)
-- Quantum circuit optimization papers are being published at an accelerating rate
-- The GPU↔quantum analogy is unexplored in the literature — we have first-mover advantage
-- The longer we wait, the more likely someone else publishes this framing
+**Device instability.** Quantum hardware calibration drifts over time. Mitigation: record calibration data with every experiment run, and run each technique's experiments within a 1–2 day window.
+
+**Paper rejection.** It happens. Mitigation: we target IEEE TQE first (engineering-focused, receptive to systems work), with Quantum as backup. If rejected, we incorporate feedback and resubmit.
 
 ---
 
-## 10. Summary
+## Why Now
 
-| | |
+Three things line up:
+
+1. **Hardware is accessible.** IBM's 127-qubit devices are on free tier. We couldn't have done this 2 years ago.
+2. **The field is ready.** Quantum circuit optimization papers are accelerating. PRX Quantum, Quantum, and IEEE TQE are actively looking for this kind of work.
+3. **The angle is untaken.** Nobody has published the GPU↔quantum analogy paper. We'd be first.
+
+The timing window is real. Let's go.
+
+---
+
+## TL;DR
+
+| Question | Answer |
 |---|---|
-| **What** | A research paper formalizing the analogy between GPU compilation and quantum circuit optimization, with an open-source framework benchmarked on real hardware |
-| **Why** | Unique angle leveraging our platform engineering expertise; fills a gap in the literature; publishable at top quantum venues |
-| **How** | Implement 6 GPU-inspired optimizations in `qc-compiler`, benchmark on IBM Quantum, write up as systems paper |
-| **When** | 6 months, August 2026 – February 2027 |
-| **Cost** | $0–$2,200 (mostly free tools; possible publication fee) |
-| **Impact** | Publication at IEEE TQE/Quantum, open-source package, transferable optimization expertise |
+| What are we doing? | Publishing a paper that maps 6 GPU optimization techniques to quantum circuits, benchmarking on real hardware, releasing an open-source framework |
+| Why us? | We're systems engineers in a physics-dominated field — that's our edge |
+| How long? | 6 months (August 2026 – February 2027) |
+| What do we need? | IBM Quantum free tier (no cost), open-source tools, ~15–20 hrs/week |
+| What's the upside? | Publication at a top venue, open-source package, unique expertise in a growing field |
+| What if it doesn't work? | We still learn a ton, and even negative results (where the analogy breaks) are publishable |
