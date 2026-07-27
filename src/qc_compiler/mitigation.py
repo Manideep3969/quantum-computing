@@ -5,7 +5,7 @@ allocates more measurement resources (shots and noise scales) to
 circuit segments that contribute most to the final expectation value.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from qiskit import QuantumCircuit

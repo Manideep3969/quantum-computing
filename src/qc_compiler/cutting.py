@@ -5,7 +5,7 @@ partitions circuits across qubit constraints using wire cutting
 and gate cutting, with a cost-benefit decision framework.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from qiskit import QuantumCircuit

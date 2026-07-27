@@ -5,7 +5,7 @@ module rearranges gates to minimize qubit idle time within the
 coherence window, prioritizing low-T2 qubits.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from qiskit import QuantumCircuit
 
