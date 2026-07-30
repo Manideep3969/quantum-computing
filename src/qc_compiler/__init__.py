@@ -14,7 +14,7 @@ __version__ = "0.1.0"
 
 from qc_compiler.cost_model import CostModel, DeviceCharacterization, CircuitMetrics, ErrorBreakdown
 from qc_compiler.fusion import GateFusion
-from qc_compiler.cutting import CircuitCutter
+from qc_compiler.cutting import CircuitCutter, CuttingResult
 from qc_compiler.mitigation import AdaptiveErrorMitigation
 from qc_compiler.scheduling import CoherenceAwareScheduler, ScheduleResult
 from qc_compiler.batching import CircuitBatcher
@@ -28,6 +28,7 @@ __all__ = [
     "ErrorBreakdown",
     "GateFusion",
     "CircuitCutter",
+    "CuttingResult",
     "AdaptiveErrorMitigation",
     "CoherenceAwareScheduler",
     "ScheduleResult",
