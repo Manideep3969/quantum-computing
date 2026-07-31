@@ -17,7 +17,7 @@ from qc_compiler.fusion import GateFusion
 from qc_compiler.cutting import CircuitCutter, CuttingResult
 from qc_compiler.mitigation import AdaptiveErrorMitigation, MitigationPlan, MitigationResult
 from qc_compiler.scheduling import CoherenceAwareScheduler, ScheduleResult
-from qc_compiler.batching import CircuitBatcher
+from qc_compiler.batching import CircuitBatcher, BatchPlan
 from qc_compiler.autotuning import AutoTuner
 from qc_compiler.utils import get_backend_properties, compute_circuit_depth, compute_cnot_count, compute_idle_fraction, get_avg_gate_time
 
@@ -35,6 +35,7 @@ __all__ = [
     "CoherenceAwareScheduler",
     "ScheduleResult",
     "CircuitBatcher",
+    "BatchPlan",
     "AutoTuner",
     "get_backend_properties",
     "compute_circuit_depth",
