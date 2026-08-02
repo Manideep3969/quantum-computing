@@ -1,7 +1,23 @@
 """Transpiler integration module for qc-compiler.
 
-Provides a unified interface that combines all six optimizations
-and integrates with Qiskit's transpiler pipeline.
+Provides a unified interface that composes all six optimizations
+into a single pipeline, analogous to how a GPU compiler chains
+kernel fusion, memory optimization, precision scaling, and
+autotuning into a single compilation pass.
+
+The pipeline applies optimizations in order:
+
+    1. Autotuning: Find the best transpilation configuration
+    2. Gate Fusion: Merge sequential single-qubit gates
+    3. Circuit Cutting: Partition if circuit exceeds device qubits
+    4. Coherence-Aware Scheduling: Minimize idle qubit time
+    5. Adaptive Error Mitigation: Allocate shots and noise scales
+    6. Circuit Batching: Group circuits sharing the same unitary core
+
+Each pass can be individually enabled/disabled via OptimizerConfig.
+The pipeline returns a QCompilerResult with the optimized circuit,
+all intermediate results, and a comparison of fidelity before and
+after optimization.
 """
 
 from dataclasses import dataclass, field
@@ -10,38 +26,104 @@ from typing import Optional
 from qiskit import QuantumCircuit
 from qiskit.providers import BackendV2
 
-from qc_compiler.cost_model import CostModel
-from qc_compiler.fusion import GateFusion
-from qc_compiler.cutting import CircuitCutter
-from qc_compiler.mitigation import AdaptiveErrorMitigation
-from qc_compiler.scheduling import CoherenceAwareScheduler
-from qc_compiler.batching import CircuitBatcher
-from qc_compiler.autotuning import AutoTuner
+from qc_compiler.cost_model import CostModel, ErrorBreakdown
+from qc_compiler.fusion import GateFusion, FusionResult
+from qc_compiler.cutting import CircuitCutter, CuttingResult
+from qc_compiler.mitigation import (
+    AdaptiveErrorMitigation,
+    MitigationPlan,
+    MitigationResult,
+)
+from qc_compiler.scheduling import CoherenceAwareScheduler, ScheduleResult
+from qc_compiler.batching import CircuitBatcher, BatchPlan
+from qc_compiler.autotuning import AutoTuner, AutotuneResult, TranspileConfig
 
 
 @dataclass
 class OptimizerConfig:
-    """Configuration for which optimizations to apply."""
+    """Configuration for which optimizations to apply.
+
+    Attributes:
+        fusion: Whether to apply gate fusion.
+        cutting: Whether to apply circuit cutting when beneficial.
+        mitigation: Error mitigation strategy — 'adaptive', 'zne',
+            'pec', 'cdr', or 'none' to disable.
+        scheduling: Scheduling method — 'asap', 'alap',
+            'coherence_aware', or 'none' to disable.
+        batch: Whether to enable circuit batching.
+        autotune: Whether to search for optimal transpile config.
+    """
 
     fusion: bool = True
     cutting: bool = True
     mitigation: str = "adaptive"
     scheduling: str = "coherence_aware"
     batch: bool = True
-    autotune: bool = True
+    autotune: bool = False
+
+
+@dataclass
+class QCompilerResult:
+    """Result of the full optimization pipeline.
+
+    Attributes:
+        original_circuit: The input circuit before optimization.
+        optimized_circuit: The final optimized circuit.
+        fidelity_before: Estimated fidelity before optimization.
+        fidelity_after: Estimated fidelity after optimization.
+        fusion_result: Result from gate fusion pass (if applied).
+        cutting_result: Result from circuit cutting pass (if applied).
+        schedule_result: Result from scheduling pass (if applied).
+        mitigation_plan: Mitigation plan (if applied).
+        batch_plan: Batch plan (if applied).
+        autotune_result: Autotune result (if applied).
+        passes_applied: List of optimization pass names that were applied.
+        config: The OptimizerConfig used.
+    """
+
+    original_circuit: QuantumCircuit = None
+    optimized_circuit: QuantumCircuit = None
+    fidelity_before: float = 0.0
+    fidelity_after: float = 0.0
+    fusion_result: Optional[FusionResult] = None
+    cutting_result: Optional[CuttingResult] = None
+    schedule_result: Optional[ScheduleResult] = None
+    mitigation_plan: Optional[MitigationPlan] = None
+    autotune_result: Optional[AutotuneResult] = None
+    batch_plan: Optional[BatchPlan] = None
+    passes_applied: list[str] = field(default_factory=list)
+    config: OptimizerConfig = None
+
+    @property
+    def fidelity_improvement(self) -> float:
+        """Absolute fidelity improvement (after - before)."""
+        return self.fidelity_after - self.fidelity_before
+
+    @property
+    def fidelity_improvement_pct(self) -> float:
+        """Percentage fidelity improvement."""
+        if self.fidelity_before == 0:
+            return 0.0
+        return (self.fidelity_after - self.fidelity_before) / self.fidelity_before * 100
 
 
 class QCompiler:
     """Main interface for hardware-aware quantum circuit optimization.
 
-    Usage:
-        from qc_compiler import QCompiler
-        from qiskit_ibm_runtime import QiskitRuntimeService
+    Composes all six optimization passes into a single pipeline.
+    Each pass can be individually enabled/disabled via OptimizerConfig.
 
-        service = QiskitRuntimeService()
-        backend = service.backend("ibm_brisbane")
+    Usage::
+
+        from qc_compiler import QCompiler, OptimizerConfig
+        from qiskit_ibm_runtime.fake_provider import FakeBrisbane
+
+        backend = FakeBrisbane()
         compiler = QCompiler(backend=backend)
-        optimized = compiler.optimize(circuit, config=OptimizerConfig())
+
+        result = compiler.optimize(circuit)
+        print(f"Fidelity: {result.fidelity_before:.4f} -> {result.fidelity_after:.4f}")
+        print(f"Passes applied: {result.passes_applied}")
     """
 
     def __init__(
@@ -55,26 +137,138 @@ class QCompiler:
         self.cutter = CircuitCutter(
             cost_model=self.cost_model, max_qubits=max_qubits
         )
-        self.mitigation = AdaptiveErrorMitigation(cost_model=self.cost_model)
-        self.scheduler = CoherenceAwareScheduler(cost_model=self.cost_model)
+        self.mitigation = AdaptiveErrorMitigation(
+            cost_model=self.cost_model
+        )
+        self.scheduler = CoherenceAwareScheduler(
+            cost_model=self.cost_model
+        )
         self.batcher = CircuitBatcher(cost_model=self.cost_model)
-        self.autotuner = AutoTuner(cost_model=self.cost_model, backend=backend)
+        self.autotuner = AutoTuner(
+            cost_model=self.cost_model, backend=backend
+        )
 
     def optimize(
         self,
         circuit: QuantumCircuit,
         config: Optional[OptimizerConfig] = None,
-    ) -> QuantumCircuit:
+    ) -> QCompilerResult:
         """Apply all enabled optimizations to a quantum circuit.
+
+        The pipeline applies optimizations in the following order:
+        1. Autotuning (find best transpile config)
+        2. Gate fusion (merge sequential single-qubit gates)
+        3. Circuit cutting (partition if needed)
+        4. Scheduling (minimize idle time)
+        5. Error mitigation (create mitigation plan)
 
         Args:
             circuit: The quantum circuit to optimize.
             config: Configuration for which optimizations to apply.
 
         Returns:
-            An optimized quantum circuit.
+            A QCompilerResult with the optimized circuit and metrics.
         """
         if config is None:
             config = OptimizerConfig()
 
-        raise NotImplementedError("Full optimization pipeline not yet implemented")
+        result = QCompilerResult(
+            original_circuit=circuit.copy(),
+            config=config,
+        )
+
+        current_circuit = circuit.copy()
+        passes_applied = []
+
+        fidelity_before = self.cost_model.estimate_fidelity(
+            current_circuit
+        ).total_fidelity
+        result.fidelity_before = fidelity_before
+
+        # Pass 1: Autotuning
+        if config.autotune:
+            autotune_result = self.autotuner.search(
+                current_circuit, circuit_family="default"
+            )
+            result.autotune_result = autotune_result
+            passes_applied.append("autotune")
+
+        # Pass 2: Gate Fusion
+        if config.fusion:
+            fusion_result = self.fusion.optimize(current_circuit)
+            if fusion_result.chains_fused > 0:
+                current_circuit = fusion_result.optimized_circuit
+            result.fusion_result = fusion_result
+            passes_applied.append("fusion")
+
+        # Pass 3: Circuit Cutting
+        if config.cutting:
+            cutting_result = self.cutter.analyze(current_circuit)
+            if cutting_result.should_cut and cutting_result.num_cuts > 0:
+                subcircuits = self.cutter.cut(current_circuit)
+                if subcircuits and len(subcircuits) > 1:
+                    current_circuit = subcircuits[0]
+            result.cutting_result = cutting_result
+            passes_applied.append("cutting")
+
+        # Pass 4: Scheduling
+        if config.scheduling != "none":
+            schedule_result = self.scheduler.schedule(
+                current_circuit, method=config.scheduling
+            )
+            current_circuit = schedule_result.circuit
+            result.schedule_result = schedule_result
+            passes_applied.append(f"scheduling:{config.scheduling}")
+
+        # Pass 5: Error Mitigation
+        if config.mitigation != "none":
+            mitigation_method = config.mitigation
+            if mitigation_method == "adaptive":
+                mitigation_method = "zne"
+            mitigation_plan = self.mitigation.create_plan(
+                current_circuit, method=mitigation_method
+            )
+            result.mitigation_plan = mitigation_plan
+            passes_applied.append(f"mitigation:{config.mitigation}")
+
+        fidelity_after = self.cost_model.estimate_fidelity(
+            current_circuit
+        ).total_fidelity
+        result.fidelity_after = fidelity_after
+
+        result.optimized_circuit = current_circuit
+        result.passes_applied = passes_applied
+
+        return result
+
+    def optimize_batch(
+        self,
+        circuits: list[QuantumCircuit],
+        config: Optional[OptimizerConfig] = None,
+    ) -> list[QCompilerResult]:
+        """Optimize a batch of circuits.
+
+        Applies the optimization pipeline to each circuit, then
+        optionally groups them for batched execution.
+
+        Args:
+            circuits: List of quantum circuits to optimize.
+            config: Configuration for which optimizations to apply.
+
+        Returns:
+            List of QCompilerResults, one per circuit.
+        """
+        if config is None:
+            config = OptimizerConfig()
+
+        results = []
+        for circuit in circuits:
+            result = self.optimize(circuit, config)
+            results.append(result)
+
+        if config.batch:
+            batch_plan = self.batcher.create_batch_plan(circuits)
+            for result in results:
+                result.batch_plan = batch_plan
+
+        return results

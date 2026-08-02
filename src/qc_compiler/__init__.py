@@ -19,6 +19,7 @@ from qc_compiler.mitigation import AdaptiveErrorMitigation, MitigationPlan, Miti
 from qc_compiler.scheduling import CoherenceAwareScheduler, ScheduleResult
 from qc_compiler.batching import CircuitBatcher, BatchPlan
 from qc_compiler.autotuning import AutoTuner, TranspileConfig, AutotuneResult
+from qc_compiler.transpiler import QCompiler, OptimizerConfig, QCompilerResult
 from qc_compiler.utils import get_backend_properties, compute_circuit_depth, compute_cnot_count, compute_idle_fraction, get_avg_gate_time
 
 __all__ = [
@@ -39,6 +40,9 @@ __all__ = [
     "AutoTuner",
     "TranspileConfig",
     "AutotuneResult",
+    "QCompiler",
+    "OptimizerConfig",
+    "QCompilerResult",
     "get_backend_properties",
     "compute_circuit_depth",
     "compute_cnot_count",
