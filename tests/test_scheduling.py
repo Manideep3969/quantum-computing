@@ -122,7 +122,7 @@ class TestCoherenceAwareSchedulerNoBackend:
         qc.cx(1, 2)
         result = scheduler.schedule(qc)
         assert len(result.idle_times) == 3
-        for q, t in result.idle_times.items():
+        for t in result.idle_times.values():
             assert t >= 0
 
     def test_asap_fidelity_matches(self, scheduler):

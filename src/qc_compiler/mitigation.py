@@ -37,7 +37,6 @@ Adaptive allocation:
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 from qiskit import QuantumCircuit
@@ -150,10 +149,10 @@ class AdaptiveErrorMitigation:
     def create_plan(
         self,
         circuit: QuantumCircuit,
-        observable: Optional[dict] = None,
+        observable: dict | None = None,
         total_shots: int = 8192,
         method: str = "zne",
-        num_segments: Optional[int] = None,
+        num_segments: int | None = None,
     ) -> MitigationPlan:
         """Create an adaptive mitigation plan.
 
@@ -204,11 +203,7 @@ class AdaptiveErrorMitigation:
         )
 
         all_scales = sorted(
-            set(
-                s
-                for scales in scales_per_segment.values()
-                for s in scales
-            )
+            {s for scales in scales_per_segment.values() for s in scales}
         )
 
         shots_per_scale = {}
@@ -236,7 +231,7 @@ class AdaptiveErrorMitigation:
         self,
         circuit: QuantumCircuit,
         plan: MitigationPlan,
-        raw_values: Optional[list[float]] = None,
+        raw_values: list[float] | None = None,
     ) -> MitigationResult:
         """Execute the mitigation plan and return results.
 
@@ -439,7 +434,7 @@ class AdaptiveErrorMitigation:
     def _extrapolate_zne(
         self,
         plan: MitigationPlan,
-        raw_values: Optional[list[float]] = None,
+        raw_values: list[float] | None = None,
     ) -> MitigationResult:
         """Extrapolate to zero noise using Richardson extrapolation.
 
@@ -513,7 +508,7 @@ class AdaptiveErrorMitigation:
         )
 
     def _execute_pec(
-        self, plan: MitigationPlan, raw_values: Optional[list[float]]
+        self, plan: MitigationPlan, raw_values: list[float] | None
     ) -> MitigationResult:
         """Execute PEC-style mitigation (placeholder).
 
@@ -539,7 +534,7 @@ class AdaptiveErrorMitigation:
         )
 
     def _execute_cdr(
-        self, plan: MitigationPlan, raw_values: Optional[list[float]]
+        self, plan: MitigationPlan, raw_values: list[float] | None
     ) -> MitigationResult:
         """Execute CDR-style mitigation (placeholder).
 

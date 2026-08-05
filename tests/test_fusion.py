@@ -5,7 +5,7 @@ from qiskit import QuantumCircuit
 from qiskit.quantum_info import Operator, process_fidelity
 
 from qc_compiler.cost_model import CostModel
-from qc_compiler.fusion import GateFusion, FusionResult
+from qc_compiler.fusion import FusionResult, GateFusion
 
 
 class TestGateFusionNoBackend:
@@ -125,8 +125,6 @@ class TestGateFusionWithBackend:
         return GateFusion(cost_model=model)
 
     def test_fusion_with_real_backend(self, fusion_with_backend):
-        from qiskit import transpile
-        backend_name = "fake_brisbane"
         qc = QuantumCircuit(4)
         qc.h(0)
         for i in range(1, 4):
@@ -272,7 +270,7 @@ class TestComputeChainUnitary:
         qc.h(0)
         qc.h(0)
         chains = fusion._find_single_qubit_chains(qc)
-        if 0 in chains and chains[0]:
+        if chains.get(0):
             unitary = fusion._compute_chain_unitary(qc, chains[0][0][2])
             assert unitary is not None
             expected = Operator(QuantumCircuit(1))

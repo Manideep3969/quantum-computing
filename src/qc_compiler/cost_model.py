@@ -14,17 +14,13 @@ Our quantum cost model computes:
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 from qiskit import QuantumCircuit
-from qiskit.transpiler import TranspileLayout
 
 from qc_compiler.utils import (
     compute_circuit_depth,
-    compute_cnot_count,
     get_backend_properties,
 )
-
 
 TWO_QUBIT_GATES = {"cx", "cz", "ecr", "swap"}
 SINGLE_QUBIT_GATES = {"id", "rz", "sx", "x", "h", "s", "t", "p", "u", "u1", "u2", "u3"}
@@ -183,7 +179,7 @@ class CostModel:
         )
 
     def estimate_gate_error(
-        self, circuit: QuantumCircuit, layout: Optional[dict] = None
+        self, circuit: QuantumCircuit, layout: dict | None = None
     ) -> float:
         """Estimate total gate error for the circuit on the characterized device.
 
@@ -237,7 +233,7 @@ class CostModel:
         return 1.0 - product
 
     def _get_gate_fidelity(
-        self, gate_name: str, layout: Optional[dict] = None
+        self, gate_name: str, layout: dict | None = None
     ) -> float:
         """Get the fidelity for a single gate execution on the device.
 
@@ -272,7 +268,7 @@ class CostModel:
         return sum(errors) / len(errors)
 
     def estimate_decoherence_error(
-        self, circuit: QuantumCircuit, layout: Optional[dict] = None
+        self, circuit: QuantumCircuit, layout: dict | None = None
     ) -> float:
         """Estimate decoherence error based on idle qubit times and T1/T2.
 
@@ -384,7 +380,7 @@ class CostModel:
     def estimate_fidelity(
         self,
         circuit: QuantumCircuit,
-        layout: Optional[dict] = None,
+        layout: dict | None = None,
     ) -> ErrorBreakdown:
         """Estimate circuit fidelity on the characterized device.
 
@@ -421,7 +417,7 @@ class CostModel:
     def compare_circuits(
         self,
         circuits: list[QuantumCircuit],
-        layouts: Optional[list[dict]] = None,
+        layouts: list[dict] | None = None,
     ) -> list[ErrorBreakdown]:
         """Compare the estimated fidelity of multiple circuits.
 

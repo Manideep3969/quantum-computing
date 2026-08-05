@@ -25,10 +25,8 @@ implementation variants and select the best one for the target device.
 """
 
 import json
-import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from qiskit import QuantumCircuit
 from qiskit.providers import BackendV2
@@ -128,7 +126,7 @@ class AutoTuner:
     def __init__(
         self,
         cost_model: CostModel,
-        backend: Optional[BackendV2] = None,
+        backend: BackendV2 | None = None,
         cache_dir: str = ".autotune_cache",
     ):
         self.cost_model = cost_model
@@ -300,7 +298,7 @@ class AutoTuner:
                 return self.cost_model.estimate_fidelity(
                     transpiled
                 ).total_fidelity
-            except Exception:
+            except Exception:  # noqa: S110, BLE001
                 pass
 
         base_fidelity = self.cost_model.estimate_fidelity(
@@ -392,12 +390,12 @@ class AutoTuner:
         try:
             with open(cache_file, "w") as f:
                 json.dump(data, f, indent=2)
-        except Exception:
+        except Exception:  # noqa: S110, BLE001
             pass
 
     def _load_cached(
         self, circuit_family: str
-    ) -> Optional[TranspileConfig]:
+    ) -> TranspileConfig | None:
         """Load a cached configuration for a circuit family.
 
         Args:
@@ -416,5 +414,5 @@ class AutoTuner:
                 data = json.load(f)
             config_dict = data.get("config", {})
             return TranspileConfig(**config_dict)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None

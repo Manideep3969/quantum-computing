@@ -7,7 +7,6 @@ extraction used across all optimization modules.
 from qiskit import QuantumCircuit
 from qiskit.providers import BackendV2
 
-
 TWO_QUBIT_GATES = {"cx", "cz", "ecr", "swap"}
 
 
@@ -44,19 +43,19 @@ def get_backend_properties(backend: BackendV2) -> dict:
         try:
             t1_val = props.qubit_property(qubit, "T1")[0]
             t1_times[qubit] = float(t1_val)
-        except Exception:
+        except Exception:  # noqa: S110, BLE001
             pass
 
         try:
             t2_val = props.qubit_property(qubit, "T2")[0]
             t2_times[qubit] = float(t2_val)
-        except Exception:
+        except Exception:  # noqa: S110, BLE001
             pass
 
         try:
             ro_val = props.qubit_property(qubit, "readout_error")[0]
             readout_errors[qubit] = float(ro_val)
-        except Exception:
+        except Exception:  # noqa: S110, BLE001
             pass
 
     single_qubit_gate_errors = {}
@@ -163,11 +162,7 @@ def get_avg_gate_time(device_props: dict, gate_type: str = "all") -> float:
 
     times = []
     for (gate_name, qubits), duration in gate_lengths.items():
-        if gate_type == "single" and len(qubits) == 1:
-            times.append(duration)
-        elif gate_type == "two" and len(qubits) == 2:
-            times.append(duration)
-        elif gate_type == "all":
+        if gate_type == "single" and len(qubits) == 1 or gate_type == "two" and len(qubits) == 2 or gate_type == "all":
             times.append(duration)
 
     if not times:
