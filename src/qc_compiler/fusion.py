@@ -20,6 +20,14 @@ Two fusion strategies are implemented:
     2. Cost-guided fusion: Only apply fusion when the cost model
        estimates that the fused version has higher fidelity than
        the original. This prevents fusion that increases error.
+
+References:
+    Qiskit Optimization Level 3 includes single-qubit gate fusion
+        via Optimize1qGatesDecomposition. Our implementation differs
+        by using a cost-model-guided decision for when fusion is
+        beneficial, rather than always fusing.
+    OneQubitEulerDecomposer: Qiskit's built-in decomposition into
+        the ZSX basis is used for the re-decomposition step.
 """
 
 from dataclasses import dataclass
