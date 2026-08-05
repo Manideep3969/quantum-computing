@@ -1,105 +1,218 @@
-# Quantum Computing Research
+# qc-compiler
 
-A research project exploring quantum computing fundamentals, algorithms, and applications.
+Hardware-aware quantum circuit optimization framework bridging classical compilation techniques to NISQ devices.
 
-## Current Paper
+## Overview
 
-**"Hardware-Aware Quantum Circuit Optimization: Bridging Classical Compilation Techniques to NISQ Devices"**
+`qc-compiler` maps six proven GPU compilation techniques to quantum circuit compilation, providing a unified pipeline that adapts optimizations to real hardware characteristics. It targets IBM Quantum devices and uses device calibration data to drive every optimization decision.
 
-We draw a systematic analogy between classical GPU compilation for deep learning workloads and quantum circuit compilation for NISQ devices. Six direct mappings are formalized, adapted, and benchmarked on IBM Quantum hardware:
+| Classical (GPU) | Quantum (NISQ) | Module |
+|---|---|---|
+| Kernel fusion | Gate fusion | `fusion.py` |
+| Model parallelism | Circuit cutting | `cutting.py` |
+| Mixed-precision training | Adaptive error mitigation | `mitigation.py` |
+| Memory-bandwidth optimization | Decoherence budget scheduling | `scheduling.py` |
+| Batched inference | Circuit batching | `batching.py` |
+| Kernel autotuning | Hardware-aware transpilation | `autotuning.py` |
 
-| Classical (GPU) | Quantum (NISQ) |
-|---|---|
-| Kernel fusion | Gate fusion |
-| Model parallelism | Circuit cutting |
-| Mixed-precision training | Error mitigation (ZNE) |
-| Memory-bandwidth optimization | Decoherence budgeting |
-| Batched inference | Circuit batching |
-| Kernel autotuning | Hardware-aware transpilation |
+All passes are composed through a `CostModel` that estimates per-gate error, decoherence, and readout fidelity, enabling cross-pass optimization.
 
-- **Paper outline:** `docs/notes/06-paper-outline.md`
-- **Project timeline:** `docs/notes/07-project-timeline.md`
-- **Target venue:** IEEE TQE / Quantum
-- **Target submission:** January 2027 (6-month timeline), hard deadline February 15, 2027
-
-## Project Structure
-
-```
-quantum-computing/
-├── docs/
-│   ├── notes/
-│   │   ├── 01-foundations.md           # Qubits, superposition, entanglement
-│   │   ├── 02-gates-and-circuits.md    # Gates, circuits, NISQ constraints
-│   │   ├── 03-quantum-algorithms.md     # Grover, Shor, VQE, QAOA
-│   │   ├── 04-quantum-error-correction.md # Stabilizer codes, surface code
-│   │   ├── 05-quantum-machine-learning.md # VQC, QNN, barren plateaus
-│   │   ├── 06-paper-outline.md         # Paper outline and methodology
-│   │   └── 07-project-timeline.md       # 6-month timeline and milestones
-│   └── papers/                          # Reference papers and summaries
-├── notebooks/              # Jupyter notebooks for experiments and demos
-├── src/
-│   └── qc_compiler/
-│       ├── __init__.py           # Package entry point
-│       ├── cost_model.py         # Unified error cost model
-│       ├── fusion.py             # Gate fusion (Optimization 1)
-│       ├── cutting.py            # Circuit cutting (Optimization 2)
-│       ├── mitigation.py         # Adaptive error mitigation (Optimization 3)
-│       ├── scheduling.py         # Decoherence budget optimization (Optimization 4)
-│       ├── batching.py           # Circuit batching (Optimization 5)
-│       ├── autotuning.py         # Hardware-aware autotuning (Optimization 6)
-│       ├── transpiler.py         # Qiskit Transpiler integration
-│       └── utils.py             # Shared utilities
-├── tests/                        # Test suite
-├── results/                      # Experiment results and outputs
-└── benchmarks/                   # Performance benchmarks
-```
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.10+
-- pip
-
-### Installation
+## Installation
 
 ```bash
 python -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
-pip install -e .    # Install qc-compiler in development mode
+pip install -e .
 ```
 
-### Running Notebooks
+For development (includes pytest, ruff, jupyter):
 
 ```bash
-jupyter notebook notebooks/
+pip install -e ".[dev]"
 ```
 
-### Running Tests
+## Quick Start
+
+```python
+from qiskit import QuantumCircuit
+from qiskit_ibm_runtime.fake_provider import FakeBrisbane
+from qc_compiler import QCompiler, OptimizerConfig
+
+qc = QuantumCircuit(4)
+qc.h(0)
+qc.cx(0, 1)
+qc.cx(1, 2)
+qc.cx(2, 3)
+
+backend = FakeBrisbane()
+
+compiler = QCompiler(backend=backend)
+config = OptimizerConfig(
+    gate_fusion=True,
+    scheduling_method="coherence_aware",
+    error_mitigation=True,
+    circuit_cutting=True,
+    autotune=True,
+)
+result = compiler.optimize(qc, config=config)
+
+print(f"Fidelity: {result.fidelity_before:.4f} -> {result.fidelity_after:.4f}")
+print(f"Passes applied: {result.passes_applied}")
+```
+
+## Modules
+
+### CostModel (`cost_model.py`)
+
+Unified error estimation using device calibration data. Provides `DeviceCharacterization`, `CircuitMetrics`, and `ErrorBreakdown` dataclasses.
+
+```python
+from qc_compiler import CostModel, DeviceCharacterization
+
+model = CostModel(DeviceCharacterization.from_backend(backend))
+breakdown = model.estimate_fidelity(circuit)
+print(breakdown)
+```
+
+### Gate Fusion (`fusion.py`)
+
+Fuses chains of single-qubit gates into fewer basis gates, reducing circuit depth and accumulated error.
+
+```python
+from qc_compiler import GateFusion
+
+fusion = GateFusion(cost_model=model)
+result = fusion.optimize(circuit)
+print(f"Gate reduction: {result.gate_reduction_pct:.1f}%")
+```
+
+### Circuit Cutting (`cutting.py`)
+
+Partitions large circuits into smaller subcircuits that fit within device qubit limits, using cost-benefit analysis to decide where to cut.
+
+```python
+from qc_compiler import CircuitCutter
+
+cutter = CircuitCutter(cost_model=model, max_qubits=5)
+result = cutter.analyze(circuit)
+print(f"Subcircuits: {len(result.subcircuits)}")
+```
+
+### Adaptive Error Mitigation (`mitigation.py`)
+
+Implements ZNE (Richardson extrapolation), PEC, and CDR with adaptive shot allocation based on qubit sensitivity.
+
+```python
+from qc_compiler import AdaptiveErrorMitigation
+
+mitigation = AdaptiveErrorMitigation(cost_model=model)
+plan = mitigation.create_plan(circuit, method="zne")
+print(f"Total shots: {plan.total_shots}")
+```
+
+### Coherence-Aware Scheduling (`scheduling.py`)
+
+Reorders gates to minimize idle time on qubits with short T1/T2 coherence times. Supports ASAP, ALAP, and coherence-aware scheduling.
+
+```python
+from qc_compiler import CoherenceAwareScheduler
+
+scheduler = CoherenceAwareScheduler(cost_model=model)
+result = scheduler.schedule(circuit, method="coherence_aware")
+print(f"Idle time reduction: {result.idle_time_avg:.1f}%")
+```
+
+### Circuit Batching (`batching.py`)
+
+Groups independent circuits that share measurement bases into combined execution batches.
+
+```python
+from qc_compiler import CircuitBatcher
+
+batcher = CircuitBatcher(cost_model=model)
+plan = batcher.create_batch_plan(circuits)
+print(f"Batches: {len(plan.batches)}")
+```
+
+### AutoTuner (`autotuning.py`)
+
+Searches over 216 transpilation configurations (routing, layout, optimization level, scheduling, fusion) using the cost model for fast estimation, with JSON caching.
+
+```python
+from qc_compiler import AutoTuner
+
+tuner = AutoTuner(cost_model=model, backend=backend)
+result = tuner.search(circuit, circuit_family="ghz")
+print(f"Best config: {result.best_config}")
+```
+
+### QCompiler Pipeline (`transpiler.py`)
+
+Composes all six passes into a single optimization pipeline with configurable enable/disable flags.
+
+```python
+from qc_compiler import QCompiler, OptimizerConfig
+
+compiler = QCompiler(backend=backend)
+config = OptimizerConfig(gate_fusion=True, circuit_cutting=True)
+result = compiler.optimize(circuit, config=config)
+```
+
+## Project Structure
+
+```
+src/qc_compiler/
+  __init__.py           # Public API and __all__
+  cost_model.py         # Unified error cost model
+  fusion.py             # Gate fusion
+  cutting.py            # Circuit cutting
+  mitigation.py         # Adaptive error mitigation
+  scheduling.py         # Decoherence budget optimization
+  batching.py           # Circuit batching
+  autotuning.py         # Hardware-aware autotuning
+  transpiler.py         # QCompiler pipeline
+  utils.py              # Shared utilities
+tests/                  # 234 tests
+notebooks/              # Validation notebooks (01-08)
+docs/
+  notes/                # Research notes and paper outline
+  paper-proposal.md     # Paper proposal
+```
+
+## Running Tests
 
 ```bash
-pytest tests/
+pytest tests/ -v --tb=short
 ```
 
-## Research Notes
+## Validation Notebooks
 
-| # | Topic | Key Focus |
-|---|---|---|
-| 01 | Foundations | Qubits, superposition, entanglement, no-cloning, Bloch sphere |
-| 02 | Gates & Circuits | Single/two-qubit gates, universality, NISQ constraints |
-| 03 | Algorithms | Deutsch-Jozsa, Grover, Shor, VQE, QAOA, QPE |
-| 04 | Error Correction | Stabilizer codes, surface code, fault tolerance |
-| 05 | Quantum ML | Quantum kernels, VQC, QNN, barren plateaus |
-| 06 | Paper Outline | Full paper structure, methodology, experiments |
-| 07 | Timeline | 6-month plan with milestones and risk mitigation |
+| Notebook | Module |
+|---|---|
+| `01-cost-model-validation.ipynb` | CostModel |
+| `02-gate-fusion-validation.ipynb` | GateFusion |
+| `03-scheduling-validation.ipynb` | CoherenceAwareScheduler |
+| `04-circuit-cutting-validation.ipynb` | CircuitCutter |
+| `05-mitigation-validation.ipynb` | AdaptiveErrorMitigation |
+| `06-batching-validation.ipynb` | CircuitBatcher |
+| `07-autotuning-validation.ipynb` | AutoTuner |
+| `08-transpiler-pipeline-validation.ipynb` | QCompiler |
+
+## Research
+
+This framework is the basis for the paper **"Hardware-Aware Quantum Circuit Optimization: Bridging Classical Compilation Techniques to NISQ Devices"**.
+
+- Paper outline: `docs/notes/06-paper-outline.md`
+- Paper proposal: `docs/paper-proposal.md`
+- Target venue: IEEE TQE / Quantum
+- Target submission: January 2027
 
 ## Tools & Frameworks
 
-- [Qiskit](https://qiskit.org/) — IBM's open-source quantum computing SDK
-- [Cirq](https://quantumai.google/cirq) — Google's quantum computing library
-- [PennyLane](https://pennylane.ai/) — Quantum machine learning framework
+- [Qiskit](https://qiskit.org/) - IBM's open-source quantum computing SDK
+- [Cirq](https://quantumai.google/cirq) - Google's quantum computing library
+- [PennyLane](https://pennylane.ai/) - Quantum machine learning framework
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+MIT License - see the [LICENSE](LICENSE) file for details.
