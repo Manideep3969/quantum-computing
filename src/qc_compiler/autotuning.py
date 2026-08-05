@@ -22,6 +22,12 @@ The algorithm:
 
 This is directly analogous to AutoTVM/Triton: systematically evaluate
 implementation variants and select the best one for the target device.
+
+References:
+    Chen, T., et al. (2018). TVM: An automated end-to-end optimizing
+        compiler for deep learning. OSDI.
+    IBM Quantum. (2024). Qiskit Transpiler Documentation.
+        https://docs.quantum.ibm.com/api/qiskit/transpiler
 """
 
 import json

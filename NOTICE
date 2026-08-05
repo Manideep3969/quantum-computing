@@ -1,0 +1,29 @@
+# Third-Party Attributions
+
+This project uses the following open-source libraries:
+
+| Library | Version | License | URL |
+|---------|---------|---------|-----|
+| Qiskit | >=1.0 | Apache 2.0 | https://qiskit.org |
+| Qiskit IBM Runtime | >=0.29 | Apache 2.0 | https://github.com/Qiskit/qiskit-ibm-runtime |
+| Qiskit Aer | >=0.14 | Apache 2.0 | https://github.com/Qiskit/qiskit-aer |
+| Cirq | >=1.3 | Apache 2.0 | https://quantumai.google/cirq |
+| PennyLane | >=0.34 | Apache 2.0 | https://pennylane.ai |
+| NumPy | >=1.24 | BSD-3 | https://numpy.org |
+| SciPy | >=1.11 | BSD-3 | https://scipy.org |
+| Matplotlib | >=3.7 | PSF | https://matplotlib.org |
+| NetworkX | >=3.1 | BSD-3 | https://networkx.org |
+
+## Research Attributions
+
+The following published algorithms and techniques are implemented or adapted in this project:
+
+- **Richardson extrapolation for ZNE**: Temme, K., Bravyi, S., & Gambetta, J. M. (2017). Error mitigation for short-depth quantum circuits. Physical Review Letters, 119(18).
+- **Adaptive error mitigation**: Li, Y., & Benjamin, S. C. (2017). Efficient variational quantum simulator employing active error minimization. Physical Review X.
+- **Circuit cutting**: Peng, T., et al. (2020). Simulating large quantum circuits on a small quantum computer. Physical Review Letters, 125(15).
+- **CutQC**: Tang, E., et al. (2024). CutQC: using small quantum computers for large quantum circuit evaluations. ACM TODAES.
+- **Noise-adaptive compilation**: Murali, P., et al. (2019). Noise-adaptive compiler mappings for noisy intermediate-scale quantum computers. ASPLOS.
+- **FlashAttention (scheduling analogy)**: Dao, T., et al. (2022). FlashAttention: Fast and memory-efficient exact attention with IO-awareness. NeurIPS.
+- **AutoTVM (autotuning analogy)**: Chen, T., et al. (2018). TVM: An automated end-to-end optimizing compiler for deep learning. OSDI.
+- **Gate decomposition**: Uses Qiskit's OneQubitEulerDecomposer (Apache 2.0) for ZSX basis decomposition.
+- **NISQ context**: Preskill, J. (2018). Quantum computing in the NISQ era and beyond. Quantum, 2, 79.

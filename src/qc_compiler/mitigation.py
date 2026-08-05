@@ -29,6 +29,14 @@ Adaptive allocation:
     - Two-qubit gate count (non-variational circuits)
     - Gradient magnitude (variational circuits, if observable provided)
 
+References:
+    Temme, K., Bravyi, S., & Gambetta, J. M. (2017). Error mitigation
+        for short-depth quantum circuits. Physical Review Letters, 119(18).
+    Li, Y., & Benjamin, S. C. (2017). Efficient variational quantum
+        simulator employing active error minimization. Physical Review X.
+    Kandala, A., et al. (2019). Error-mitigated quantum gates exceeding
+        99.9% fidelity. Nature.
+
     Shots are then allocated proportional to sensitivity, and
     noise scale count is determined by sensitivity tier:
     - High sensitivity: 3+ noise scales (full ZNE)

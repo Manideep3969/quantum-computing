@@ -27,6 +27,14 @@ Cost model:
     Error_cut   = subcircuit_errors + sampling_overhead
     Sampling_overhead = 4^k / shots   (k = number of cuts)
     Cut if Error_cut < Error_uncut
+
+References:
+    Peng, T., et al. (2020). Simulating large quantum circuits on a
+        small quantum computer. Physical Review Letters, 125(15).
+    Bravyi, S., Smith, G., & Smolin, J. (2016). Trading classical and
+        quantum computational resources. Physical Review X.
+    Tang, E., et al. (2024). CutQC: using small quantum computers
+        for large quantum circuit evaluations. ACM TODAES.
 """
 
 from dataclasses import dataclass, field

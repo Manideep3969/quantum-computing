@@ -20,6 +20,12 @@ Three scheduling strategies are provided:
        time) while allowing high-T2 qubits more flexibility.
        Analogous to prioritizing high-bandwidth memory transfers in
        GPU scheduling.
+
+References:
+    Dao, T., et al. (2022). FlashAttention: Fast and memory-efficient
+        exact attention with IO-awareness. NeurIPS.
+    Murali, P., et al. (2019). Noise-adaptive compiler mappings for
+        noisy intermediate-scale quantum computers. ASPLOS.
 """
 
 from dataclasses import dataclass, field
