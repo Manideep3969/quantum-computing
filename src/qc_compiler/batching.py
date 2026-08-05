@@ -21,7 +21,6 @@ Three batching strategies are provided:
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 from qiskit import QuantumCircuit
 
@@ -239,7 +238,6 @@ class CircuitBatcher:
 
         batches = []
         batch_sizes = []
-        unitary_core_groups = {}
 
         for depth, indices in depth_groups.items():
             current_batch_qubits = set()
@@ -392,7 +390,7 @@ class CircuitBatcher:
             return 1.0
 
         total_savings = 0
-        for core_hash, group in core_groups.items():
+        for group in core_groups.values():
             if len(group) > 1:
                 core_depth = group[0].depth()
                 total_measure_steps = sum(c.depth() for c in group)

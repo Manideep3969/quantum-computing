@@ -346,8 +346,6 @@ class CoherenceAwareScheduler:
         if depth == 0:
             return {q: 0.0 for q in range(circuit.num_qubits)}
 
-        ops = circuit.count_ops()
-        total_gates = sum(ops.values())
 
         avg_gate_time = self._avg_gate_time()
 

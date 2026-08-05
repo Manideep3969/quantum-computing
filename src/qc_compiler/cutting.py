@@ -30,13 +30,11 @@ Cost model:
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 from qiskit import QuantumCircuit
 
 from qc_compiler.cost_model import CostModel
-
 
 TWO_QUBIT_GATES = {"cx", "cz", "ecr", "swap", "rxx", "rzz", "ryy"}
 
@@ -442,8 +440,6 @@ class CircuitCutter:
             best = remaining_candidates.pop(0)
             selected.append(best)
 
-            num_cuts = len(selected)
-            sampling_overhead = (4 ** num_cuts) / shots
 
             cut_error = self._estimate_cut_error(
                 circuit, selected, shots
@@ -482,15 +478,10 @@ class CircuitCutter:
         sampling_overhead = (4 ** num_cuts) / shots
 
         num_groups = num_cuts + 1
-        qubits_per_group = max(
-            1, circuit.num_qubits // num_groups
-        )
 
         group_errors = []
         for g in range(num_groups):
-            start_q = g * qubits_per_group
-            end_q = min(start_q + qubits_per_group, circuit.num_qubits)
-            group_qubits = end_q - start_q
+
 
             total_gates = sum(circuit.count_ops().values())
             group_gate_count = max(
@@ -621,7 +612,7 @@ class CircuitCutter:
                 new_qubits = [sub.qubits[qubit_map[q]] for q in gate_qubits]
                 try:
                     sub.append(instr.operation, new_qubits, instr.clbits)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     sub.append(instr.operation, new_qubits)
 
         return sub

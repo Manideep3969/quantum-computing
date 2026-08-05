@@ -4,7 +4,7 @@ import pytest
 from qiskit import QuantumCircuit
 from qiskit.circuit.library import QFT
 
-from qc_compiler.cost_model import CostModel, CircuitMetrics, ErrorBreakdown, DeviceCharacterization
+from qc_compiler.cost_model import CircuitMetrics, CostModel, DeviceCharacterization, ErrorBreakdown
 
 
 class TestDeviceCharacterization:

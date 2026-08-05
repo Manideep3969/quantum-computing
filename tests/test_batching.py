@@ -3,8 +3,8 @@
 import pytest
 from qiskit import QuantumCircuit
 
+from qc_compiler.batching import MEASUREMENT_BASIS, BatchPlan, CircuitBatcher
 from qc_compiler.cost_model import CostModel
-from qc_compiler.batching import CircuitBatcher, BatchPlan, MEASUREMENT_BASIS
 
 
 def _make_bell_circuit(basis="Z"):

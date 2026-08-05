@@ -1,13 +1,13 @@
 """Tests for qc_compiler.autotuning module."""
 
-import json
 import os
 import tempfile
+
 import pytest
 from qiskit import QuantumCircuit
 
+from qc_compiler.autotuning import AutoTuner, AutotuneResult, TranspileConfig
 from qc_compiler.cost_model import CostModel
-from qc_compiler.autotuning import AutoTuner, TranspileConfig, AutotuneResult
 
 
 class TestTranspileConfig:
@@ -276,7 +276,7 @@ class TestAutoTunerWithBackend:
         qc = QuantumCircuit(2)
         qc.h(0)
         qc.cx(0, 1)
-        result1 = tuner_with_backend.search(
+        _ = tuner_with_backend.search(
             qc, circuit_family="test_backend_cache"
         )
         result2 = tuner_with_backend.search(

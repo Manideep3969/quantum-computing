@@ -4,7 +4,7 @@ import pytest
 from qiskit import QuantumCircuit
 
 from qc_compiler.cost_model import CostModel
-from qc_compiler.cutting import CircuitCutter, CuttingResult, CutLocation
+from qc_compiler.cutting import CircuitCutter, CutLocation, CuttingResult
 
 
 class TestCuttingResult:

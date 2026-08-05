@@ -3,8 +3,7 @@
 import pytest
 from qiskit import QuantumCircuit
 
-from qc_compiler.cost_model import CostModel
-from qc_compiler.transpiler import QCompiler, OptimizerConfig, QCompilerResult
+from qc_compiler.transpiler import OptimizerConfig, QCompiler, QCompilerResult
 
 
 class TestOptimizerConfig:

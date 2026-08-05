@@ -292,13 +292,13 @@ class TestAssignNoiseScales:
     def test_pec_scales(self, mitigation):
         sensitivity = {0: 0.5, 1: 0.3, 2: 0.2}
         scales = mitigation._assign_noise_scales(sensitivity, "pec")
-        for idx, scale_list in scales.items():
+        for scale_list in scales.values():
             assert scale_list == [1.0]
 
     def test_cdr_scales(self, mitigation):
         sensitivity = {0: 0.5, 1: 0.3, 2: 0.2}
         scales = mitigation._assign_noise_scales(sensitivity, "cdr")
-        for idx, scale_list in scales.items():
+        for scale_list in scales.values():
             assert scale_list == [1.0, 2.0]
 
     def test_empty_sensitivity(self, mitigation):

@@ -21,22 +21,20 @@ after optimization.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 from qiskit import QuantumCircuit
 from qiskit.providers import BackendV2
 
-from qc_compiler.cost_model import CostModel, ErrorBreakdown
-from qc_compiler.fusion import GateFusion, FusionResult
+from qc_compiler.autotuning import AutoTuner, AutotuneResult
+from qc_compiler.batching import BatchPlan, CircuitBatcher
+from qc_compiler.cost_model import CostModel
 from qc_compiler.cutting import CircuitCutter, CuttingResult
+from qc_compiler.fusion import FusionResult, GateFusion
 from qc_compiler.mitigation import (
     AdaptiveErrorMitigation,
     MitigationPlan,
-    MitigationResult,
 )
 from qc_compiler.scheduling import CoherenceAwareScheduler, ScheduleResult
-from qc_compiler.batching import CircuitBatcher, BatchPlan
-from qc_compiler.autotuning import AutoTuner, AutotuneResult, TranspileConfig
 
 
 @dataclass
@@ -85,12 +83,12 @@ class QCompilerResult:
     optimized_circuit: QuantumCircuit = None
     fidelity_before: float = 0.0
     fidelity_after: float = 0.0
-    fusion_result: Optional[FusionResult] = None
-    cutting_result: Optional[CuttingResult] = None
-    schedule_result: Optional[ScheduleResult] = None
-    mitigation_plan: Optional[MitigationPlan] = None
-    autotune_result: Optional[AutotuneResult] = None
-    batch_plan: Optional[BatchPlan] = None
+    fusion_result: FusionResult | None = None
+    cutting_result: CuttingResult | None = None
+    schedule_result: ScheduleResult | None = None
+    mitigation_plan: MitigationPlan | None = None
+    autotune_result: AutotuneResult | None = None
+    batch_plan: BatchPlan | None = None
     passes_applied: list[str] = field(default_factory=list)
     config: OptimizerConfig = None
 
@@ -128,7 +126,7 @@ class QCompiler:
 
     def __init__(
         self,
-        backend: Optional[BackendV2] = None,
+        backend: BackendV2 | None = None,
         max_qubits: int = 127,
     ):
         self.backend = backend
@@ -151,7 +149,7 @@ class QCompiler:
     def optimize(
         self,
         circuit: QuantumCircuit,
-        config: Optional[OptimizerConfig] = None,
+        config: OptimizerConfig | None = None,
     ) -> QCompilerResult:
         """Apply all enabled optimizations to a quantum circuit.
 
@@ -244,7 +242,7 @@ class QCompiler:
     def optimize_batch(
         self,
         circuits: list[QuantumCircuit],
-        config: Optional[OptimizerConfig] = None,
+        config: OptimizerConfig | None = None,
     ) -> list[QCompilerResult]:
         """Optimize a batch of circuits.
 

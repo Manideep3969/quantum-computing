@@ -22,13 +22,13 @@ Two fusion strategies are implemented:
        the original. This prevents fusion that increases error.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import Operator
 from qiskit.synthesis import OneQubitEulerDecomposer
 
-from qc_compiler.cost_model import CostModel, CircuitMetrics
+from qc_compiler.cost_model import CircuitMetrics, CostModel
 
 
 @dataclass
@@ -330,12 +330,12 @@ class GateFusion:
             gate = instr.operation
             try:
                 chain_qc.append(gate, [0])
-            except Exception:
+            except Exception:  # noqa: BLE001
                 return None
 
         try:
             return Operator(chain_qc)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def _decompose_to_basis(
@@ -353,7 +353,7 @@ class GateFusion:
         try:
             decomposed = self._decomposer(unitary)
             return decomposed
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def _replace_chain(
