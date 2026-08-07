@@ -274,7 +274,29 @@ class TestComputeChainUnitary:
             unitary = fusion._compute_chain_unitary(qc, chains[0][0][2])
             assert unitary is not None
             expected = Operator(QuantumCircuit(1))
-            assert process_fidelity(unitary, expected) > 0.99
+        assert process_fidelity(unitary, expected) > 0.99
+
+    def test_decompose_failure_returns_none(self, fusion):
+        from qiskit.quantum_info import Operator
+        non_unitary = Operator([[1, 0], [0, 0]])
+        result = fusion._decompose_to_basis(non_unitary)
+        assert result is None
+
+
+class TestCostGuidedRejection:
+    """Tests for cost-guided fusion that rejects fusion when it degrades fidelity."""
+
+    @pytest.fixture
+    def fusion(self):
+        return GateFusion(cost_model=CostModel())
+
+    def test_cost_guided_fusion_reverts_on_degradation(self, fusion):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        result = fusion.optimize(qc, cost_guided=True)
+        assert isinstance(result, FusionResult)
+        assert result.original_circuit is not None
 
     def test_hrz_chain(self, fusion):
         qc = QuantumCircuit(1)

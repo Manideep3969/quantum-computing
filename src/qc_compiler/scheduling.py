@@ -369,33 +369,6 @@ class CoherenceAwareScheduler:
 
         return idle_times
 
-    def _compute_gate_starts(self, circuit: QuantumCircuit) -> list[int]:
-        """Compute the start cycle for each gate in ASAP order.
-
-        Args:
-            circuit: The circuit.
-
-        Returns:
-            List of start cycles, one per gate.
-        """
-        qubit_next_cycle = [0] * circuit.num_qubits
-        starts = []
-
-        for instr in circuit.data:
-            qubits = [circuit.find_bit(q).index for q in instr.qubits]
-            if not qubits:
-                starts.append(0)
-                continue
-            earliest = max(qubit_next_cycle[q] for q in qubits)
-            starts.append(earliest)
-            duration = self._get_gate_duration(
-                instr.operation.name, qubits
-            )
-            for q in qubits:
-                qubit_next_cycle[q] = earliest + duration
-
-        return starts
-
     def _get_gate_duration(
         self, gate_name: str, qubits: list[int]
     ) -> int:

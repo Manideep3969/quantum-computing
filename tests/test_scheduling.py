@@ -247,3 +247,40 @@ class TestGateDuration:
 
     def test_measurement_duration(self, scheduler):
         assert scheduler._get_gate_duration("measure", [0]) == 1
+
+
+class TestSchedulingEdgeCases:
+    """Tests for scheduling edge cases."""
+
+    @pytest.fixture
+    def scheduler(self):
+        return CoherenceAwareScheduler(cost_model=CostModel())
+
+    def test_schedule_circuit_with_classical_register(self, scheduler):
+        qc = QuantumCircuit(2, 2)
+        qc.h(0)
+        qc.cx(0, 1)
+        result = scheduler.schedule(qc, method="asap")
+        assert result is not None
+        assert result.circuit is not None
+
+    def test_alap_with_classical_register(self, scheduler):
+        qc = QuantumCircuit(2, 2)
+        qc.h(0)
+        qc.cx(0, 1)
+        result = scheduler.schedule(qc, method="alap")
+        assert result is not None
+        assert result.circuit is not None
+
+    def test_coherence_aware_with_classical_register(self, scheduler):
+        qc = QuantumCircuit(2, 2)
+        qc.h(0)
+        qc.cx(0, 1)
+        result = scheduler.schedule(qc, method="coherence_aware")
+        assert result is not None
+        assert result.circuit is not None
+
+    def test_t2_priority_fallback_for_unknown_qubits(self, scheduler):
+        result = scheduler._compute_t2_priority(5)
+        assert len(result) == 5
+        assert all(v > 0 for v in result.values())
