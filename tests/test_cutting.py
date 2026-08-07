@@ -289,3 +289,34 @@ class TestPartitionQubits:
         cut_points = [(1, 2)]
         groups = cutter._partition_qubits(qc, cut_points)
         assert len(groups) >= 1
+
+
+class TestCuttingEdgeCases:
+    """Tests for cutting edge cases and decision paths."""
+
+    @pytest.fixture
+    def cutter(self):
+        return CircuitCutter(cost_model=CostModel(), max_qubits=1)
+
+    def test_analyze_should_not_cut_small_circuit(self, cutter):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        result = cutter.analyze(qc)
+        assert isinstance(result, CuttingResult)
+
+    def test_cut_returns_original_when_no_cut(self):
+        normal_cutter = CircuitCutter(cost_model=CostModel())
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        result = normal_cutter.cut(qc)
+        assert len(result) == 1
+        assert result[0].num_qubits == qc.num_qubits
+
+    def test_analyze_estimated_error_non_negative(self, cutter):
+        qc = QuantumCircuit(4)
+        for i in range(4):
+            qc.h(i)
+        for i in range(3):
+            qc.cx(i, i + 1)
+        result = cutter.analyze(qc)
+        assert result.estimated_error_uncut >= 0

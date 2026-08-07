@@ -320,3 +320,31 @@ class TestQCompilerWithBackend:
         )
         result = compiler_with_backend.optimize(qc, config=config)
         assert result.fusion_result is not None
+
+    def test_optimize_batch_default_config(self, compiler_with_backend):
+        circuits = []
+        for _ in range(2):
+            qc = QuantumCircuit(2)
+            qc.h(0)
+            qc.cx(0, 1)
+            circuits.append(qc)
+        results = compiler_with_backend.optimize_batch(circuits)
+        assert len(results) == 2
+        for r in results:
+            assert r.fidelity_before > 0
+
+    def test_optimize_autotune_pass(self, compiler_with_backend):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        config = OptimizerConfig(
+            fusion=False,
+            cutting=False,
+            mitigation="none",
+            scheduling="none",
+            batch=False,
+            autotune=True,
+        )
+        result = compiler_with_backend.optimize(qc, config=config)
+        assert "autotune" in result.passes_applied
+        assert result.autotune_result is not None

@@ -56,4 +56,4 @@ ibm_quantum_token*
 qiskitrc
 
 # Python version management
-.python-version
+.python-version.autotune_cache/

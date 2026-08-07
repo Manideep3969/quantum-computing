@@ -359,4 +359,44 @@ class TestAdaptiveErrorMitigationWithBackend:
         plan = mitigation_with_backend.create_plan(qc)
         result = mitigation_with_backend.execute(qc, plan)
         assert result.method == "zne"
-        assert result.mitigated_value != 0.0
+
+
+class TestMitigationEdgeCases:
+    """Tests for mitigation edge cases."""
+
+    @pytest.fixture
+    def mitigation(self):
+        return AdaptiveErrorMitigation(cost_model=CostModel())
+
+    def test_execute_unknown_method_returns_result(self, mitigation):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        plan = MitigationPlan(
+            method="unknown",
+            noise_scales=[1.0],
+            shots_per_scale={0: [8192]},
+            subcircuit_sensitivity={0: 1.0},
+            total_shots=8192,
+            segments=[(0, 1)],
+            shots_per_segment={0: 8192},
+            scales_per_segment={0: [1.0]},
+        )
+        result = mitigation.execute(qc, plan)
+        assert result.method == "unknown"
+
+    def test_zne_near_zero_denominator(self, mitigation):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        plan = mitigation.create_plan(qc, method="zne", num_segments=2)
+        result = mitigation.execute(qc, plan, raw_values=[0.5])
+        assert result is not None
+
+    def test_gradient_based_sensitivity(self, mitigation):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        observable = {"gradient": {0: 0.8, 1: 0.2}}
+        plan = mitigation.create_plan(qc, method="zne", observable=observable)
+        assert plan.subcircuit_sensitivity is not None

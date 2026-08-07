@@ -292,3 +292,30 @@ class TestMeasurementBasis:
 
     def test_all_bases_present(self):
         assert set(MEASUREMENT_BASIS.keys()) == {"Z", "X", "Y"}
+
+
+class TestBatchingEdgeCases:
+    """Tests for batching edge cases."""
+
+    @pytest.fixture
+    def batcher(self):
+        return CircuitBatcher(cost_model=CostModel())
+
+    def test_structural_batch_with_qubit_overlap(self, batcher):
+        circuits = []
+        for _ in range(3):
+            qc = QuantumCircuit(3)
+            for i in range(3):
+                qc.h(i)
+            circuits.append(qc)
+        plan = batcher.create_batch_plan(circuits, strategy="structural")
+        assert plan is not None
+        assert plan.total_circuits == 3
+
+    def test_estimate_speedup_empty_groups(self, batcher):
+        speedup = batcher._estimate_speedup([], {})
+        assert speedup >= 1.0
+
+    def test_estimate_structural_speedup_empty(self, batcher):
+        speedup = batcher._estimate_structural_speedup([], [])
+        assert speedup == 1.0

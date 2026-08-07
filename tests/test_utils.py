@@ -281,3 +281,79 @@ class TestGetAvgGateTime:
         assert avg_two > 0
         assert avg_all > 0
         assert avg_single < avg_two
+
+
+class TestGetBackendPropertiesEdgeCases:
+    """Tests for backend property extraction edge cases."""
+
+    def test_missing_qubit_properties_handled_gracefully(self):
+        from unittest.mock import MagicMock
+
+        backend = MagicMock()
+        backend.num_qubits = 2
+        mock_props = MagicMock()
+        mock_props.qubit_property.side_effect = Exception("no data")
+        mock_props.gates = []
+        backend.properties.return_value = mock_props
+
+        props = get_backend_properties(backend)
+        assert props["num_qubits"] == 2
+        assert props["t1_times"] == {}
+        assert props["t2_times"] == {}
+        assert props["readout_errors"] == {}
+        assert props["single_qubit_gate_errors"] == {}
+        assert props["two_qubit_gate_errors"] == {}
+        assert props["gate_lengths"] == {}
+
+    def test_partial_qubit_data(self):
+        from unittest.mock import MagicMock
+
+        backend = MagicMock()
+        backend.num_qubits = 3
+        backend.name = "test_backend"
+
+        mock_props = MagicMock()
+
+        def qubit_prop(qubit, prop):
+            if qubit == 0 and prop == "T1":
+                return (1e-4,)
+            if qubit == 0 and prop == "T2":
+                return (5e-5,)
+            if qubit == 0 and prop == "readout_error":
+                return (0.02,)
+            raise RuntimeError("no data")
+
+        mock_props.qubit_property = qubit_prop
+        mock_props.gates = []
+        backend.properties.return_value = mock_props
+
+        props = get_backend_properties(backend)
+        assert 0 in props["t1_times"]
+        assert 0 in props["t2_times"]
+        assert 0 in props["readout_errors"]
+
+    def test_gate_length_unit_conversion(self):
+        from unittest.mock import MagicMock
+
+        backend = MagicMock()
+        backend.num_qubits = 1
+        backend.name = "test_backend"
+
+        mock_gate_ns = MagicMock()
+        mock_gate_ns.gate = "h"
+        mock_gate_ns.qubits = [0]
+        mock_param = MagicMock()
+        mock_param.name = "gate_length"
+        mock_param.value = 50.0
+        mock_param.unit = "ns"
+        mock_gate_ns.parameters = [mock_param]
+
+        mock_props = MagicMock()
+        mock_props.qubit_property.side_effect = Exception("no data")
+        mock_props.gates = [mock_gate_ns]
+        backend.properties.return_value = mock_props
+
+        props = get_backend_properties(backend)
+        assert len(props["gate_lengths"]) > 0
+        for length in props["gate_lengths"].values():
+            assert length > 0
