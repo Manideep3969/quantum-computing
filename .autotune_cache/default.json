@@ -1,0 +1,12 @@
+{
+  "circuit_family": "default",
+  "config": {
+    "routing_method": "sabre",
+    "layout_method": "vf2_layout",
+    "optimization_level": 3,
+    "seed": 2,
+    "gate_fusion": true,
+    "scheduling_method": "coherence_aware"
+  },
+  "fidelity": 0.950450024877504
+}

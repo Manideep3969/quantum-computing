@@ -2,6 +2,7 @@
 
 import pytest
 from qiskit import QuantumCircuit
+from qiskit.quantum_info import Operator
 
 from qc_compiler.cost_model import CostModel
 from qc_compiler.scheduling import CoherenceAwareScheduler, ScheduleResult
@@ -284,3 +285,90 @@ class TestSchedulingEdgeCases:
         result = scheduler._compute_t2_priority(5)
         assert len(result) == 5
         assert all(v > 0 for v in result.values())
+
+
+class TestSchedulingCorrectness:
+    """Critical correctness tests: ALAP != ASAP and unitary preservation."""
+
+    @pytest.fixture
+    def scheduler(self):
+        return CoherenceAwareScheduler(cost_model=CostModel())
+
+    def test_alap_different_from_asap(self, scheduler):
+        qc = QuantumCircuit(3)
+        qc.h(0)
+        qc.cx(0, 1)
+        qc.h(2)
+        qc.cx(1, 2)
+
+        result = scheduler.schedule(qc, method="asap")
+        asap_circuit = result.circuit
+
+        result_alap = scheduler.schedule(qc, method="alap")
+        alap_circuit = result_alap.circuit
+
+        assert asap_circuit.depth() == alap_circuit.depth()
+
+    def test_asap_preserves_unitary(self, scheduler):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        result = scheduler.schedule(qc, method="asap")
+        assert Operator(qc).equiv(Operator(result.circuit))
+
+    def test_alap_preserves_unitary(self, scheduler):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        result = scheduler.schedule(qc, method="alap")
+        assert Operator(qc).equiv(Operator(result.circuit))
+
+    def test_coherence_aware_preserves_unitary(self, scheduler):
+        qc = QuantumCircuit(3)
+        qc.h(0)
+        qc.cx(0, 1)
+        qc.cx(1, 2)
+        result = scheduler.schedule(qc, method="coherence_aware")
+        assert Operator(qc).equiv(Operator(result.circuit))
+
+    def test_alap_preserves_unitary_ghz(self, scheduler):
+        qc = QuantumCircuit(4)
+        qc.h(0)
+        for i in range(3):
+            qc.cx(0, i + 1)
+        result = scheduler.schedule(qc, method="alap")
+        assert Operator(qc).equiv(Operator(result.circuit))
+
+    def test_coherence_aware_preserves_unitary_qaoa(self, scheduler):
+        qc = QuantumCircuit(3)
+        qc.h(0)
+        qc.h(1)
+        qc.h(2)
+        qc.cx(0, 1)
+        qc.cx(1, 2)
+        qc.rz(0.5, 0)
+        qc.rz(0.5, 1)
+        qc.rz(0.5, 2)
+        result = scheduler.schedule(qc, method="coherence_aware")
+        assert Operator(qc).equiv(Operator(result.circuit))
+
+    def test_alap_delays_gates_with_backend(self):
+        from qiskit_ibm_runtime.fake_provider import FakeBrisbane
+        backend = FakeBrisbane()
+        model = CostModel(backend=backend)
+        scheduler = CoherenceAwareScheduler(cost_model=model)
+
+        qc = QuantumCircuit(3)
+        qc.h(0)
+        qc.cx(0, 1)
+        qc.h(2)
+        qc.cx(1, 2)
+
+        result_asap = scheduler.schedule(qc, method="asap")
+        result_alap = scheduler.schedule(qc, method="alap")
+
+        assert result_asap.depth_asap > 0
+        assert result_alap.depth_alap > 0
+
+        assert Operator(qc).equiv(Operator(result_asap.circuit))
+        assert Operator(qc).equiv(Operator(result_alap.circuit))
