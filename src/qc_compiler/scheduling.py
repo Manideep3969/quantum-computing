@@ -237,17 +237,54 @@ class CoherenceAwareScheduler:
         idle time after operations. This can reduce decoherence for
         qubits that are measured late.
 
+        Algorithm:
+        1. Compute ASAP start and end times for each gate.
+        2. Compute total depth from the ASAP schedule.
+        3. Traverse gates in reverse topological order.
+        4. For each gate, set its latest end time to the minimum
+           of its successors' latest start times (or total_depth
+           if it has no successors).
+        5. Set latest start = latest end - gate_duration.
+        6. Sort gates by latest start time and build the circuit.
+
         Args:
             circuit: The circuit to schedule.
 
         Returns:
             A new circuit with ALAP scheduling.
         """
-        asap_circuit = self._asap_schedule(circuit)
-        total_depth = asap_circuit.depth()
+        if circuit.depth() == 0:
+            scheduled = QuantumCircuit(
+                *circuit.qregs,
+                name=f"{circuit.name}_alap",
+            )
+            for creg in circuit.cregs:
+                scheduled.add_register(creg)
+            return scheduled
 
-        if total_depth == 0:
-            return asap_circuit
+        total_depth = circuit.depth()
+
+        qubit_latest_end = [total_depth] * circuit.num_qubits
+
+        gate_latest_start = [0] * len(circuit.data)
+
+        for i in range(len(circuit.data) - 1, -1, -1):
+            instr = circuit.data[i]
+            qubits = [circuit.find_bit(q).index for q in instr.qubits]
+
+            if not qubits:
+                gate_latest_start[i] = 0
+                continue
+
+            gate_duration = self._get_gate_duration(instr.operation.name, qubits)
+
+            latest_end = min(qubit_latest_end[q] for q in qubits)
+            latest_start = latest_end - gate_duration
+
+            gate_latest_start[i] = latest_start
+
+            for q in qubits:
+                qubit_latest_end[q] = latest_start
 
         scheduled = QuantumCircuit(
             *circuit.qregs,
@@ -256,40 +293,39 @@ class CoherenceAwareScheduler:
         for creg in circuit.cregs:
             scheduled.add_register(creg)
 
-        qubit_next_cycle = [0] * circuit.num_qubits
+        gate_order = sorted(range(len(circuit.data)), key=lambda i: gate_latest_start[i])
 
-        for instr in circuit.data:
+        for i in gate_order:
+            instr = circuit.data[i]
             gate = instr.operation
             qubits = [circuit.find_bit(q).index for q in instr.qubits]
             target_qubits = [circuit.qubits[q] for q in qubits]
             target_clbits = [circuit.find_bit(c).index for c in instr.clbits]
-            clbit_refs = [scheduled.clbits[i] for i in target_clbits] if target_clbits else []
+            clbit_refs = [scheduled.clbits[j] for j in target_clbits] if target_clbits else []
 
             scheduled.append(gate, target_qubits, clbit_refs)
-
-            gate_duration = self._get_gate_duration(gate.name, qubits)
-            earliest = max(qubit_next_cycle[q] for q in qubits) if qubits else 0
-            for q in qubits:
-                qubit_next_cycle[q] = earliest + gate_duration
 
         return scheduled
 
     def _coherence_aware_schedule(
         self, circuit: QuantumCircuit
     ) -> QuantumCircuit:
-        """Schedule prioritizing low-T2 qubits.
+        """Schedule prioritizing low-T2 qubits while respecting dependencies.
 
         For each qubit, computes a priority based on its T2 time:
         - Low T2 → high priority (schedule gates early to minimize
           decoherence)
         - High T2 → low priority (can afford to wait)
 
-        The algorithm:
-        1. Compute ASAP schedule and per-qubit idle times
-        2. Rank qubits by T2 (ascending) — most fragile first
-        3. For each gate, if it involves a high-priority qubit,
-           schedule it as early as possible
-        4. For gates on low-priority qubits only, delay them (ALAP)
+        The algorithm uses a dependency-aware priority queue:
+        1. Build a DAG of gate dependencies.
+        2. Start with gates whose predecessors are all scheduled.
+        3. Among ready gates, pick the one with the lowest T2 priority.
+        4. Schedule it at the earliest possible cycle.
+        5. Repeat until all gates are scheduled.
+
+        This preserves circuit unitary while minimizing idle time on
+        fragile (low-T2) qubits.
 
         Args:
             circuit: The circuit to schedule.
@@ -299,6 +335,42 @@ class CoherenceAwareScheduler:
         """
         t2_priority = self._compute_t2_priority(circuit.num_qubits)
 
+        if circuit.depth() == 0:
+            scheduled = QuantumCircuit(
+                *circuit.qregs,
+                name=f"{circuit.name}_coherence_aware",
+            )
+            for creg in circuit.cregs:
+                scheduled.add_register(creg)
+            return scheduled
+
+        num_gates = len(circuit.data)
+        qubit_latest_gate = [-1] * circuit.num_qubits
+        predecessors = [set() for _ in range(num_gates)]
+
+        qubit_first_gate = [-1] * circuit.num_qubits
+        for i, instr in enumerate(circuit.data):
+            qubits = [circuit.find_bit(q).index for q in instr.qubits]
+            for q in qubits:
+                if qubit_first_gate[q] == -1:
+                    qubit_first_gate[q] = i
+
+        for i, instr in enumerate(circuit.data):
+            qubits = [circuit.find_bit(q).index for q in instr.qubits]
+            for q in qubits:
+                if qubit_latest_gate[q] >= 0:
+                    predecessors[i].add(qubit_latest_gate[q])
+                qubit_latest_gate[q] = i
+
+        for i in range(num_gates - 1):
+            if circuit.data[i].operation.name == "barrier":
+                for q in [circuit.find_bit(q).index for q in circuit.data[i].qubits]:
+                    for j in range(i + 1, num_gates):
+                        jqubits = [circuit.find_bit(q).index for q in circuit.data[j].qubits]
+                        if q in jqubits:
+                            predecessors[j].add(i)
+
+        qubit_next_cycle = [0] * circuit.num_qubits
         scheduled = QuantumCircuit(
             *circuit.qregs,
             name=f"{circuit.name}_coherence_aware",
@@ -306,21 +378,28 @@ class CoherenceAwareScheduler:
         for creg in circuit.cregs:
             scheduled.add_register(creg)
 
-        qubit_next_cycle = [0] * circuit.num_qubits
+        remaining = set(range(num_gates))
+        scheduled_set = set()
 
-        gate_list = []
-        for idx, instr in enumerate(circuit.data):
+        while remaining:
+            ready = []
+            for i in remaining:
+                if predecessors[i].issubset(scheduled_set):
+                    ready.append(i)
+
+            if not ready:
+                break
+
+            ready.sort(key=lambda i: min(t2_priority.get(q, float('inf')) for q in [circuit.find_bit(q).index for q in circuit.data[i].qubits]) if circuit.data[i].qubits else float('inf'))
+
+            gate_idx = ready[0]
+
+            instr = circuit.data[gate_idx]
             gate = instr.operation
             qubits = [circuit.find_bit(q).index for q in instr.qubits]
-            priority = min(t2_priority.get(q, 0) for q in qubits) if qubits else float('inf')
-            gate_list.append((priority, idx, gate, qubits, instr))
-
-        gate_list.sort(key=lambda x: x[0])
-
-        for priority, idx, gate, qubits, instr in gate_list:
             target_qubits = [circuit.qubits[q] for q in qubits]
             target_clbits = [circuit.find_bit(c).index for c in instr.clbits]
-            clbit_refs = [scheduled.clbits[i] for i in target_clbits] if target_clbits else []
+            clbit_refs = [scheduled.clbits[j] for j in target_clbits] if target_clbits else []
 
             scheduled.append(gate, target_qubits, clbit_refs)
 
@@ -328,6 +407,9 @@ class CoherenceAwareScheduler:
             earliest = max(qubit_next_cycle[q] for q in qubits) if qubits else 0
             for q in qubits:
                 qubit_next_cycle[q] = earliest + gate_duration
+
+            remaining.remove(gate_idx)
+            scheduled_set.add(gate_idx)
 
         return scheduled
 
@@ -352,7 +434,6 @@ class CoherenceAwareScheduler:
         if depth == 0:
             return {q: 0.0 for q in range(circuit.num_qubits)}
 
-
         avg_gate_time = self._avg_gate_time()
 
         qubit_active_cycles = {q: 0 for q in range(circuit.num_qubits)}
@@ -368,6 +449,31 @@ class CoherenceAwareScheduler:
             idle_times[q] = idle_cycles * avg_gate_time
 
         return idle_times
+
+    def _compute_asap_starts(self, circuit: QuantumCircuit) -> list[int]:
+        """Compute ASAP start cycle for each gate.
+
+        Args:
+            circuit: The circuit.
+
+        Returns:
+            List of start cycles, one per gate.
+        """
+        qubit_next_cycle = [0] * circuit.num_qubits
+        starts = []
+
+        for instr in circuit.data:
+            qubits = [circuit.find_bit(q).index for q in instr.qubits]
+            if not qubits:
+                starts.append(0)
+                continue
+            earliest = max(qubit_next_cycle[q] for q in qubits)
+            starts.append(earliest)
+            duration = self._get_gate_duration(instr.operation.name, qubits)
+            for q in qubits:
+                qubit_next_cycle[q] = earliest + duration
+
+        return starts
 
     def _get_gate_duration(
         self, gate_name: str, qubits: list[int]
