@@ -348,3 +348,48 @@ class TestQCompilerWithBackend:
         result = compiler_with_backend.optimize(qc, config=config)
         assert "autotune" in result.passes_applied
         assert result.autotune_result is not None
+
+    def test_cutting_produces_subcircuits(self):
+        from qiskit_ibm_runtime.fake_provider import FakeBrisbane
+        backend = FakeBrisbane()
+        compiler = QCompiler(backend=backend, max_qubits=3)
+        qc = QuantumCircuit(5)
+        for i in range(5):
+            qc.h(i)
+        for i in range(4):
+            qc.cx(i, i + 1)
+        config = OptimizerConfig(
+            fusion=False,
+            cutting=True,
+            mitigation="none",
+            scheduling="none",
+            batch=False,
+            autotune=False,
+        )
+        result = compiler.optimize(qc, config=config)
+        assert result.cutting_result is not None
+        if result.cutting_result.should_cut and result.subcircuits is not None:
+            assert len(result.subcircuits) > 1
+
+    def test_cutting_with_scheduling_applies_to_subcircuits(self):
+        from qiskit_ibm_runtime.fake_provider import FakeBrisbane
+        backend = FakeBrisbane()
+        compiler = QCompiler(backend=backend, max_qubits=3)
+        qc = QuantumCircuit(5)
+        for i in range(5):
+            qc.h(i)
+        for i in range(4):
+            qc.cx(i, i + 1)
+        config = OptimizerConfig(
+            fusion=False,
+            cutting=True,
+            mitigation="none",
+            scheduling="coherence_aware",
+            batch=False,
+            autotune=False,
+        )
+        result = compiler.optimize(qc, config=config)
+        assert result.cutting_result is not None
+        if result.cutting_result.should_cut and result.subcircuits is not None:
+            assert len(result.subcircuits) > 1
+            assert result.fidelity_after > 0
