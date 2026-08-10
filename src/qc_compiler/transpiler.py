@@ -89,6 +89,7 @@ class QCompilerResult:
     mitigation_plan: MitigationPlan | None = None
     autotune_result: AutotuneResult | None = None
     batch_plan: BatchPlan | None = None
+    subcircuits: list[QuantumCircuit] | None = None
     passes_applied: list[str] = field(default_factory=list)
     config: OptimizerConfig = None
 
@@ -189,6 +190,8 @@ class QCompiler:
                 current_circuit, circuit_family="default"
             )
             result.autotune_result = autotune_result
+            if autotune_result.best_circuit is not None:
+                current_circuit = autotune_result.best_circuit
             passes_applied.append("autotune")
 
         # Pass 2: Gate Fusion
@@ -202,12 +205,69 @@ class QCompiler:
         # Pass 3: Circuit Cutting
         if config.cutting:
             cutting_result = self.cutter.analyze(current_circuit)
+            result.cutting_result = cutting_result
+            passes_applied.append("cutting")
+
             if cutting_result.should_cut and cutting_result.num_cuts > 0:
                 subcircuits = self.cutter.cut(current_circuit)
                 if subcircuits and len(subcircuits) > 1:
-                    current_circuit = subcircuits[0]
-            result.cutting_result = cutting_result
-            passes_applied.append("cutting")
+                    result.subcircuits = subcircuits
+
+                    sub_results = []
+                    for sub in subcircuits:
+                        sub_result = QCompilerResult(
+                            original_circuit=sub.copy(),
+                            config=config,
+                        )
+                        sub_current = sub.copy()
+
+                        sub_fidelity_before = self.cost_model.estimate_fidelity(
+                            sub_current
+                        ).total_fidelity
+                        sub_result.fidelity_before = sub_fidelity_before
+
+                        if config.scheduling != "none":
+                            sub_schedule = self.scheduler.schedule(
+                                sub_current, method=config.scheduling
+                            )
+                            sub_current = sub_schedule.circuit
+                            sub_result.schedule_result = sub_schedule
+                            sub_result.passes_applied.append(
+                                f"scheduling:{config.scheduling}"
+                            )
+
+                        if config.mitigation != "none":
+                            mitigation_method = config.mitigation
+                            if mitigation_method == "adaptive":
+                                mitigation_method = "zne"
+                            sub_mitigation = self.mitigation.create_plan(
+                                sub_current, method=mitigation_method
+                            )
+                            sub_result.mitigation_plan = sub_mitigation
+                            sub_result.passes_applied.append(
+                                f"mitigation:{config.mitigation}"
+                            )
+
+                        sub_fidelity_after = self.cost_model.estimate_fidelity(
+                            sub_current
+                        ).total_fidelity
+                        sub_result.fidelity_after = sub_fidelity_after
+                        sub_result.optimized_circuit = sub_current
+
+                        sub_results.append(sub_result)
+
+                    sampling_overhead = cutting_result.sampling_overhead
+                    sub_fidelities = [r.fidelity_after for r in sub_results]
+                    combined_fidelity = 1.0
+                    for f in sub_fidelities:
+                        combined_fidelity *= f
+                    combined_fidelity /= max(sampling_overhead, 1e-10)
+
+                    result.fidelity_after = combined_fidelity
+                    result.optimized_circuit = subcircuits[0]
+                    result.passes_applied = passes_applied
+
+                    return result
 
         # Pass 4: Scheduling
         if config.scheduling != "none":
@@ -265,7 +325,8 @@ class QCompiler:
             results.append(result)
 
         if config.batch:
-            batch_plan = self.batcher.create_batch_plan(circuits)
+            optimized_circuits = [r.optimized_circuit for r in results]
+            batch_plan = self.batcher.create_batch_plan(optimized_circuits)
             for result in results:
                 result.batch_plan = batch_plan
 
