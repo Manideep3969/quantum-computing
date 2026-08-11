@@ -1,0 +1,8 @@
+---
+name: Config
+description: Configure issue template settings
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/Manideep3969/quantum-computing/discussions
+    about: Ask general questions, share ideas, or start a discussion.
