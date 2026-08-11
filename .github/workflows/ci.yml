@@ -43,9 +43,7 @@ jobs:
 
       - name: Run tests with coverage
         if: matrix.python-version == '3.12'
-        run: |
-          pip install pytest-cov
-          pytest tests/ --cov=qc_compiler --cov-report=term-missing --cov-report=xml
+        run: pytest tests/ --cov=qc_compiler --cov-report=term-missing --cov-report=xml --cov-fail-under=90
 
       - name: Upload coverage artifact
         if: matrix.python-version == '3.12'
