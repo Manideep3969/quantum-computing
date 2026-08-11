@@ -2,8 +2,6 @@
 
 [![CI](https://github.com/Manideep3969/quantum-computing/actions/workflows/ci.yml/badge.svg)](https://github.com/Manideep3969/quantum-computing/actions/workflows/ci.yml)
 [![Notebooks](https://github.com/Manideep3969/quantum-computing/actions/workflows/notebooks.yml/badge.svg)](https://github.com/Manideep3969/quantum-computing/actions/workflows/notebooks.yml)
-[![PyPI](https://img.shields.io/pypi/v/qc-compiler)](https://pypi.org/project/qc-compiler/)
-[![Python](https://img.shields.io/pypi/pyversions/qc-compiler)](https://pypi.org/project/qc-compiler/)
 [![License](https://img.shields.io/github/license/Manideep3969/quantum-computing)](LICENSE)
 [![Code of Conduct](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
