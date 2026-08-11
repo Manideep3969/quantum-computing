@@ -13,13 +13,6 @@ authors = [
     {name = "Manideep"},
 ]
 keywords = ["quantum", "computing", "circuit", "optimization", "NISQ", "qiskit"]
-
-[project.urls]
-Homepage = "https://github.com/Manideep3969/quantum-computing"
-Repository = "https://github.com/Manideep3969/quantum-computing"
-Issues = "https://github.com/Manideep3969/quantum-computing/issues"
-Changelog = "https://github.com/Manideep3969/quantum-computing/blob/main/CHANGELOG.md"
-
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -41,6 +34,12 @@ dependencies = [
     "matplotlib>=3.7",
     "networkx>=3.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Manideep3969/quantum-computing"
+Repository = "https://github.com/Manideep3969/quantum-computing"
+Issues = "https://github.com/Manideep3969/quantum-computing/issues"
+Changelog = "https://github.com/Manideep3969/quantum-computing/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
