@@ -5,7 +5,7 @@ cirq==1.4.1
 pennylane==0.36.0
 numpy==1.26.4
 scipy==1.15.3
-matplotlib==3.9.1
+matplotlib==3.10.9
 networkx==3.3
 jupyter==1.0.0
 notebook==7.2.1
