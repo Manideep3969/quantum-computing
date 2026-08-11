@@ -1,7 +1,7 @@
 qiskit==1.1.1
 qiskit-ibm-runtime==0.29.0
 qiskit-aer==0.14.2
-cirq==1.4.1
+cirq==1.5.0
 pennylane==0.36.0
 numpy==1.26.4
 scipy==1.15.3
