@@ -10,5 +10,5 @@ networkx==3.3
 jupyter==1.0.0
 notebook==7.2.1
 pytest==8.3.2
-ruff==0.5.5
+ruff==0.16.2
 black==24.8.0
