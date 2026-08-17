@@ -43,8 +43,7 @@ import numpy as np
 from qiskit import QuantumCircuit
 
 from qc_compiler.cost_model import CostModel
-
-TWO_QUBIT_GATES = {"cx", "cz", "ecr", "swap", "rxx", "rzz", "ryy"}
+from qc_compiler.utils import TWO_QUBIT_GATES
 
 
 @dataclass

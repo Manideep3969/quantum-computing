@@ -94,13 +94,8 @@ class FusionResult:
         return (self.depth_before - self.depth_after) / self.depth_before * 100
 
 
-# Gates that should not be fused (they are barriers or measurements)
+# Gates that should not be fused (barriers, measurements)
 BOUNDARY_GATES = {"measure", "reset", "barrier", "snapshot"}
-
-# Two-qubit gates that act as boundaries for single-qubit chains
-TWO_QUBIT_GATES = {
-    "cx", "cz", "ecr", "swap", "rxx", "rzz", "ryy", "crx", "cry", "crz"
-}
 
 
 class GateFusion:

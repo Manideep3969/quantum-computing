@@ -20,6 +20,16 @@ class TestTwoQubitGates:
         assert "ecr" in TWO_QUBIT_GATES
         assert "swap" in TWO_QUBIT_GATES
 
+    def test_contains_parametric_two_qubit_gates(self):
+        assert "rxx" in TWO_QUBIT_GATES
+        assert "rzz" in TWO_QUBIT_GATES
+        assert "ryy" in TWO_QUBIT_GATES
+
+    def test_contains_controlled_rotation_gates(self):
+        assert "crx" in TWO_QUBIT_GATES
+        assert "cry" in TWO_QUBIT_GATES
+        assert "crz" in TWO_QUBIT_GATES
+
     def test_does_not_contain_single_qubit_gates(self):
         assert "h" not in TWO_QUBIT_GATES
         assert "x" not in TWO_QUBIT_GATES
