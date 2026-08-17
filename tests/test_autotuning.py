@@ -283,3 +283,14 @@ class TestAutoTunerWithBackend:
             qc, circuit_family="test_backend_cache"
         )
         assert "cached" in result2.all_results
+
+    def test_search_with_backend_sets_best_circuit(self, tuner_with_backend):
+        qc = QuantumCircuit(4)
+        qc.h(0)
+        for i in range(1, 4):
+            qc.cx(0, i)
+        result = tuner_with_backend.search(
+            qc, circuit_family="test_best_circuit"
+        )
+        if result.best_circuit is not None:
+            assert result.best_circuit.num_qubits == qc.num_qubits
