@@ -171,11 +171,13 @@ class GateFusion:
         ).total_fidelity
 
         chains = self._find_single_qubit_chains(circuit)
-        fused_circuit = circuit.copy()
+
+        all_gate_indices = set()
+        replacement_map = {}
         chains_fused = 0
 
         for qubit_idx, chain_list in chains.items():
-            for start_idx, end_idx, gate_indices in chain_list:
+            for _start_idx, _end_idx, gate_indices in chain_list:
                 if len(gate_indices) < min_chain_length:
                     continue
 
@@ -195,13 +197,30 @@ class GateFusion:
                 if decomposed_gate_count >= original_gate_count:
                     continue
 
-                fused_circuit = self._replace_chain(
-                    fused_circuit, qubit_idx, gate_indices, decomposed
-                )
-                if fused_circuit is not None:
-                    chains_fused += 1
+                chains_fused += 1
+                all_gate_indices.update(gate_indices)
+                for idx in gate_indices:
+                    replacement_map[idx] = (qubit_idx, decomposed)
 
         if chains_fused == 0:
+            return FusionResult(
+                original_circuit=circuit,
+                optimized_circuit=circuit.copy(),
+                original_metrics=original_metrics,
+                optimized_metrics=original_metrics,
+                chains_fused=0,
+                total_gates_before=sum(circuit.count_ops().values()),
+                total_gates_after=sum(circuit.count_ops().values()),
+                depth_before=circuit.depth(),
+                depth_after=circuit.depth(),
+                fidelity_before=original_fidelity,
+                fidelity_after=original_fidelity,
+            )
+
+        fused_circuit = self._replace_all_chains(
+            circuit, replacement_map
+        )
+        if fused_circuit is None:
             return FusionResult(
                 original_circuit=circuit,
                 optimized_circuit=circuit.copy(),
@@ -359,48 +378,49 @@ class GateFusion:
         except Exception:  # noqa: BLE001
             return None
 
-    def _replace_chain(
+    def _replace_all_chains(
         self,
         circuit: QuantumCircuit,
-        qubit_idx: int,
-        gate_indices: list[int],
-        decomposed: QuantumCircuit,
+        replacement_map: dict[int, tuple[int, QuantumCircuit]],
     ) -> QuantumCircuit | None:
-        """Replace a chain of single-qubit gates with a decomposed unitary.
+        """Replace all identified chains in a single pass.
 
-        Builds a new circuit by:
-        1. Copying all instructions before the chain
-        2. Inserting the decomposed unitary on the target qubit
-        3. Copying all instructions after the chain
+        Iterates through the original circuit's instructions. When the
+        first instruction of a chain is encountered, inserts the
+        decomposed replacement and skips all subsequent instructions
+        in that chain.
 
         Args:
             circuit: The original circuit.
-            qubit_idx: The qubit index where the chain lives.
-            gate_indices: Instruction indices forming the chain.
-            decomposed: The decomposed replacement circuit.
+            replacement_map: Mapping from instruction index to
+                (qubit_idx, decomposed_circuit).
 
         Returns:
-            A new QuantumCircuit with the chain replaced, or None on error.
+            A new QuantumCircuit with all chains replaced, or None on error.
         """
         new_qc = QuantumCircuit(*circuit.qregs, *circuit.cregs)
 
-        skip_indices = set(gate_indices)
-        chain_replaced = False
+        seen_decomposed = set()
 
         for idx, instr in enumerate(circuit.data):
-            if idx in skip_indices and not chain_replaced:
-                for dep_instr in decomposed.data:
-                    new_qc.append(
-                        dep_instr.operation,
-                        [circuit.qubits[qubit_idx]],
-                        dep_instr.clbits if dep_instr.clbits else [],
-                    )
-                chain_replaced = True
-                continue
-
-            if idx in skip_indices:
-                continue
-
-            new_qc.append(instr.operation, instr.qubits, instr.clbits)
+            if idx in replacement_map:
+                qubit_idx, decomposed = replacement_map[idx]
+                decomposed_id = id(decomposed)
+                if decomposed_id not in seen_decomposed:
+                    for dep_instr in decomposed.data:
+                        try:
+                            new_qc.append(
+                                dep_instr.operation,
+                                [circuit.qubits[qubit_idx]],
+                                dep_instr.clbits if dep_instr.clbits else [],
+                            )
+                        except Exception:  # noqa: BLE001
+                            return None
+                    seen_decomposed.add(decomposed_id)
+            else:
+                try:
+                    new_qc.append(instr.operation, instr.qubits, instr.clbits)
+                except Exception:  # noqa: BLE001
+                    return None
 
         return new_qc
