@@ -310,3 +310,59 @@ class TestCostGuidedRejection:
         assert unitary is not None
         expected = Operator(qc)
         assert process_fidelity(unitary, expected) > 0.99
+
+
+class TestMultiChainFusion:
+    """Regression tests for multi-chain fusion (issue #37).
+
+    When a circuit has multiple fusible chains on different qubits,
+    the old _replace_chain method would corrupt the circuit because
+    it rebuilt the circuit on each replacement, shifting instruction
+    indices. The fix uses a single-pass _replace_all_chains that
+    processes all chains simultaneously.
+    """
+
+    @pytest.fixture
+    def fusion(self):
+        return GateFusion(cost_model=CostModel())
+
+    def test_two_chains_on_separate_qubits(self, fusion):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.h(0)
+        qc.h(1)
+        qc.h(1)
+        result = fusion.optimize(qc)
+        original_unitary = Operator(qc)
+        fused_unitary = Operator(result.optimized_circuit)
+        assert process_fidelity(fused_unitary, original_unitary) > 0.99
+
+    def test_chains_separated_by_two_qubit_gates(self, fusion):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.h(0)
+        qc.cx(0, 1)
+        qc.h(0)
+        qc.h(0)
+        qc.h(1)
+        qc.h(1)
+        result = fusion.optimize(qc)
+        original_unitary = Operator(qc)
+        fused_unitary = Operator(result.optimized_circuit)
+        assert process_fidelity(fused_unitary, original_unitary) > 0.99
+
+    def test_three_qubit_multiple_chains(self, fusion):
+        qc = QuantumCircuit(3)
+        for i in range(3):
+            qc.h(i)
+            qc.rz(0.5, i)
+            qc.sx(i)
+        qc.cx(0, 1)
+        for i in range(3):
+            qc.h(i)
+            qc.rz(0.3, i)
+            qc.sx(i)
+        result = fusion.optimize(qc)
+        original_unitary = Operator(qc)
+        fused_unitary = Operator(result.optimized_circuit)
+        assert process_fidelity(fused_unitary, original_unitary) > 0.99
