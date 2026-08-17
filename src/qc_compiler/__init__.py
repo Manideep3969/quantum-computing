@@ -21,6 +21,7 @@ from qc_compiler.mitigation import AdaptiveErrorMitigation, MitigationPlan, Miti
 from qc_compiler.scheduling import CoherenceAwareScheduler, ScheduleResult
 from qc_compiler.transpiler import OptimizerConfig, QCompiler, QCompilerResult
 from qc_compiler.utils import (
+    TWO_QUBIT_GATES,
     compute_circuit_depth,
     compute_cnot_count,
     compute_idle_fraction,
@@ -29,6 +30,7 @@ from qc_compiler.utils import (
 )
 
 __all__ = [
+    "TWO_QUBIT_GATES",
     "AdaptiveErrorMitigation",
     "AutoTuner",
     "AutotuneResult",

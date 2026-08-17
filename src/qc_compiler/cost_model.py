@@ -18,11 +18,11 @@ from dataclasses import dataclass, field
 from qiskit import QuantumCircuit
 
 from qc_compiler.utils import (
+    TWO_QUBIT_GATES,
     compute_circuit_depth,
     get_backend_properties,
 )
 
-TWO_QUBIT_GATES = {"cx", "cz", "ecr", "swap"}
 SINGLE_QUBIT_GATES = {"id", "rz", "sx", "x", "h", "s", "t", "p", "u", "u1", "u2", "u3"}
 
 

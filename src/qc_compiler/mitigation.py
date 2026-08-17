@@ -50,6 +50,7 @@ import numpy as np
 from qiskit import QuantumCircuit
 
 from qc_compiler.cost_model import CostModel
+from qc_compiler.utils import TWO_QUBIT_GATES
 
 
 @dataclass
@@ -127,9 +128,6 @@ class MitigationResult:
     extrapolation_coefficients: list[float] = field(default_factory=list)
     shots_used: int = 0
     method: str = "zne"
-
-
-TWO_QUBIT_GATES = {"cx", "cz", "ecr", "swap", "rxx", "rzz", "ryy"}
 
 
 class AdaptiveErrorMitigation:

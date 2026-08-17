@@ -7,7 +7,7 @@ extraction used across all optimization modules.
 from qiskit import QuantumCircuit
 from qiskit.providers import BackendV2
 
-TWO_QUBIT_GATES = {"cx", "cz", "ecr", "swap"}
+TWO_QUBIT_GATES = {"cx", "cz", "ecr", "swap", "rxx", "rzz", "ryy", "crx", "cry", "crz"}
 
 
 def get_backend_properties(backend: BackendV2) -> dict:
