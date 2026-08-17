@@ -187,24 +187,30 @@ class AutoTuner:
         best_circuit = None
 
         default_config = TranspileConfig()
-        default_fidelity = self._estimate_fidelity(circuit, default_config)
+        default_result = self._estimate_fidelity_with_circuit(
+            circuit, default_config
+        )
+        default_fidelity = default_result["fidelity"]
         all_results["default"] = default_fidelity
 
         if default_fidelity > best_fidelity:
             best_fidelity = default_fidelity
             best_config = default_config
+            best_circuit = default_result.get("circuit")
 
         for config in configs:
             key = config.config_key()
             if key == default_config.config_key():
                 continue
 
-            fidelity = self._estimate_fidelity(circuit, config)
+            result = self._estimate_fidelity_with_circuit(circuit, config)
+            fidelity = result["fidelity"]
             all_results[key] = fidelity
 
             if fidelity > best_fidelity:
                 best_fidelity = fidelity
                 best_config = config
+                best_circuit = result.get("circuit")
 
         sorted_results = sorted(
             all_results.items(), key=lambda x: x[1], reverse=True
@@ -221,6 +227,21 @@ class AutoTuner:
 
         if best_config is None:
             best_config = default_config
+
+        if best_circuit is None and self.backend is not None:
+            try:
+                from qiskit import transpile
+
+                best_circuit = transpile(
+                    circuit,
+                    backend=self.backend,
+                    routing_method=best_config.routing_method,
+                    layout_method=best_config.layout_method,
+                    optimization_level=best_config.optimization_level,
+                    seed_transpiler=best_config.seed,
+                )
+            except Exception:  # noqa: S110, BLE001
+                pass
 
         self._cache_result(circuit_family, best_config, best_fidelity)
 
@@ -271,6 +292,40 @@ class AutoTuner:
                                     )
                                 )
         return configs
+
+    def _estimate_fidelity_with_circuit(
+        self, circuit: QuantumCircuit, config: TranspileConfig
+    ) -> dict:
+        """Estimate fidelity for a config and return the transpiled circuit.
+
+        Args:
+            circuit: The quantum circuit to evaluate.
+            config: The transpilation configuration.
+
+        Returns:
+            Dict with 'fidelity' (float) and 'circuit' (QuantumCircuit or None).
+        """
+        if self.backend is not None:
+            try:
+                from qiskit import transpile
+
+                transpiled = transpile(
+                    circuit,
+                    backend=self.backend,
+                    routing_method=config.routing_method,
+                    layout_method=config.layout_method,
+                    optimization_level=config.optimization_level,
+                    seed_transpiler=config.seed,
+                )
+                fidelity = self.cost_model.estimate_fidelity(
+                    transpiled
+                ).total_fidelity
+                return {"fidelity": fidelity, "circuit": transpiled}
+            except Exception:  # noqa: S110, BLE001
+                pass
+
+        fidelity = self._estimate_fidelity(circuit, config)
+        return {"fidelity": fidelity, "circuit": None}
 
     def _estimate_fidelity(
         self, circuit: QuantumCircuit, config: TranspileConfig
