@@ -136,7 +136,10 @@ def compute_idle_fraction(circuit: QuantumCircuit) -> float:
         return 0.0
 
     total_slots = circuit.num_qubits * depth
-    active_slots = sum(circuit.count_ops().values())
+    active_slots = 0
+    for instr in circuit.data:
+        active_slots += len(instr.qubits)
+
     idle_slots = total_slots - active_slots
 
     return idle_slots / total_slots

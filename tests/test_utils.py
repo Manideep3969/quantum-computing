@@ -213,7 +213,7 @@ class TestComputeIdleFraction:
         qc.h(0)
         qc.cx(0, 1)
         idle = compute_idle_fraction(qc)
-        assert idle == 0.5
+        assert idle == 0.25
 
     def test_ghz_circuit_idle(self):
         qc = QuantumCircuit(5)
