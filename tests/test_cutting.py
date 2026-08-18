@@ -290,6 +290,38 @@ class TestPartitionQubits:
         groups = cutter._partition_qubits(qc, cut_points)
         assert len(groups) >= 1
 
+    def test_partition_no_cuts_returns_all_qubits(self, cutter):
+        qc = QuantumCircuit(4)
+        groups = cutter._partition_qubits(qc, [])
+        all_qubits = set()
+        for g in groups:
+            all_qubits.update(g)
+        assert all_qubits == {0, 1, 2, 3}
+
+    def test_partition_single_cut_separates_qubits(self, cutter):
+        qc = QuantumCircuit(4)
+        qc.cx(0, 1)
+        qc.cx(1, 2)
+        qc.cx(2, 3)
+        groups = cutter._partition_qubits(qc, [(1, 2)])
+        assert len(groups) == 2
+        all_qubits = set()
+        for g in groups:
+            all_qubits.update(g)
+        assert all_qubits == {0, 1, 2, 3}
+
+    def test_partition_groups_are_disjoint(self, cutter):
+        qc = QuantumCircuit(6)
+        for i in range(5):
+            qc.cx(i, i + 1)
+        groups = cutter._partition_qubits(qc, [(1, 2), (3, 4)])
+        all_qubits = set()
+        for g in groups:
+            g_set = set(g)
+            assert g_set.isdisjoint(all_qubits)
+            all_qubits.update(g_set)
+        assert all_qubits == {0, 1, 2, 3, 4, 5}
+
 
 class TestCuttingEdgeCases:
     """Tests for cutting edge cases and decision paths."""

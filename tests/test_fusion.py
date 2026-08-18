@@ -366,3 +366,55 @@ class TestMultiChainFusion:
         original_unitary = Operator(qc)
         fused_unitary = Operator(result.optimized_circuit)
         assert process_fidelity(fused_unitary, original_unitary) > 0.99
+
+
+class TestFusionUnitaryEquivalence:
+    """Comprehensive unitary equivalence tests for gate fusion (issue #55)."""
+
+    @pytest.fixture
+    def fusion(self):
+        return GateFusion(cost_model=CostModel())
+
+    def test_single_qubit_chain_bell(self, fusion):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        result = fusion.optimize(qc)
+        assert process_fidelity(Operator(result.optimized_circuit), Operator(qc)) > 0.99
+
+    def test_single_qubit_chain_ghz(self, fusion):
+        qc = QuantumCircuit(4)
+        qc.h(0)
+        for i in range(3):
+            qc.cx(i, i + 1)
+        result = fusion.optimize(qc)
+        assert process_fidelity(Operator(result.optimized_circuit), Operator(qc)) > 0.99
+
+    def test_rz_chain_preserves_unitary(self, fusion):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.rz(0.5, 0)
+        qc.rz(0.3, 0)
+        qc.cx(0, 1)
+        result = fusion.optimize(qc)
+        assert process_fidelity(Operator(result.optimized_circuit), Operator(qc)) > 0.99
+
+    def test_multi_qubit_chain_preserves_unitary(self, fusion):
+        qc = QuantumCircuit(3)
+        qc.h(0)
+        qc.h(1)
+        qc.h(2)
+        qc.cx(0, 1)
+        qc.cx(1, 2)
+        result = fusion.optimize(qc)
+        assert process_fidelity(Operator(result.optimized_circuit), Operator(qc)) > 0.99
+
+    def test_fusion_preserves_unitary_up_to_global_phase(self, fusion):
+        qc = QuantumCircuit(1)
+        qc.h(0)
+        qc.sx(0)
+        qc.rz(1.23, 0)
+        result = fusion.optimize(qc)
+        original_op = Operator(qc)
+        fused_op = Operator(result.optimized_circuit)
+        assert original_op.equiv(fused_op)
