@@ -372,3 +372,74 @@ class TestSchedulingCorrectness:
 
         assert Operator(qc).equiv(Operator(result_asap.circuit))
         assert Operator(qc).equiv(Operator(result_alap.circuit))
+
+
+class TestSchedulingUnitaryEquivalence:
+    """Comprehensive unitary equivalence tests for all scheduling methods (issue #55)."""
+
+    @pytest.fixture
+    def scheduler(self):
+        return CoherenceAwareScheduler(cost_model=CostModel())
+
+    def test_asap_preserves_unitary_bell(self, scheduler):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        result = scheduler.schedule(qc, method="asap")
+        assert Operator(qc).equiv(Operator(result.circuit))
+
+    def test_alap_preserves_unitary_bell(self, scheduler):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        result = scheduler.schedule(qc, method="alap")
+        assert Operator(qc).equiv(Operator(result.circuit))
+
+    def test_coherence_aware_preserves_unitary_bell(self, scheduler):
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        result = scheduler.schedule(qc, method="coherence_aware")
+        assert Operator(qc).equiv(Operator(result.circuit))
+
+    def test_asap_preserves_unitary_ghz(self, scheduler):
+        qc = QuantumCircuit(4)
+        qc.h(0)
+        for i in range(3):
+            qc.cx(i, i + 1)
+        result = scheduler.schedule(qc, method="asap")
+        assert Operator(qc).equiv(Operator(result.circuit))
+
+    def test_alap_preserves_unitary_ghz(self, scheduler):
+        qc = QuantumCircuit(4)
+        qc.h(0)
+        for i in range(3):
+            qc.cx(i, i + 1)
+        result = scheduler.schedule(qc, method="alap")
+        assert Operator(qc).equiv(Operator(result.circuit))
+
+    def test_coherence_aware_preserves_unitary_ghz(self, scheduler):
+        qc = QuantumCircuit(4)
+        qc.h(0)
+        for i in range(3):
+            qc.cx(i, i + 1)
+        result = scheduler.schedule(qc, method="coherence_aware")
+        assert Operator(qc).equiv(Operator(result.circuit))
+
+    def test_alap_produces_different_schedule_than_asap(self, scheduler):
+        qc = QuantumCircuit(3)
+        qc.h(0)
+        qc.cx(0, 1)
+        qc.h(2)
+        qc.cx(1, 2)
+        qc.h(1)
+
+        asap_result = scheduler.schedule(qc, method="asap")
+        alap_result = scheduler.schedule(qc, method="alap")
+
+        assert Operator(qc).equiv(Operator(asap_result.circuit))
+        assert Operator(qc).equiv(Operator(alap_result.circuit))
+
+        assert asap_result.method == "asap"
+        assert alap_result.method == "alap"
+        assert asap_result.method != alap_result.method
