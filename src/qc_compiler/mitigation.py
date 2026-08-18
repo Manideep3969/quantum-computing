@@ -120,6 +120,8 @@ class MitigationResult:
             extrapolation.
         shots_used: Total shots actually used.
         method: Mitigation method used.
+        placeholder: Whether this result is from a placeholder implementation
+            that does not perform true error mitigation.
     """
 
     mitigated_value: float = 0.0
@@ -128,6 +130,7 @@ class MitigationResult:
     extrapolation_coefficients: list[float] = field(default_factory=list)
     shots_used: int = 0
     method: str = "zne"
+    placeholder: bool = False
 
 
 class AdaptiveErrorMitigation:
@@ -519,15 +522,26 @@ class AdaptiveErrorMitigation:
         """Execute PEC-style mitigation (placeholder).
 
         Full PEC requires gate characterization data from the device.
-        This implementation returns raw values with metadata.
+        This implementation returns raw values with metadata and marks
+        the result as a placeholder.
 
         Args:
             plan: The mitigation plan.
             raw_values: Measured values.
 
         Returns:
-            A MitigationResult with PEC metadata.
+            A MitigationResult with PEC metadata (placeholder=True).
         """
+        import warnings
+
+        warnings.warn(
+            "PEC mitigation is a placeholder implementation that does not "
+            "perform true probabilistic error cancellation. Results should "
+            "not be relied upon for accuracy.",
+            UserWarning,
+            stacklevel=2,
+        )
+
         if raw_values is None:
             raw_values = self._simulate_values(plan)
 
@@ -537,6 +551,7 @@ class AdaptiveErrorMitigation:
             noise_scales=plan.noise_scales,
             shots_used=plan.total_shots,
             method="pec",
+            placeholder=True,
         )
 
     def _execute_cdr(
@@ -545,15 +560,26 @@ class AdaptiveErrorMitigation:
         """Execute CDR-style mitigation (placeholder).
 
         Full CDR requires classically simulable Clifford circuits.
-        This implementation returns raw values with metadata.
+        This implementation applies linear extrapolation as a rough
+        approximation and marks the result as a placeholder.
 
         Args:
             plan: The mitigation plan.
             raw_values: Measured values.
 
         Returns:
-            A MitigationResult with CDR metadata.
+            A MitigationResult with CDR metadata (placeholder=True).
         """
+        import warnings
+
+        warnings.warn(
+            "CDR mitigation is a placeholder implementation that applies "
+            "linear extrapolation rather than true Clifford data regression. "
+            "Results should not be relied upon for accuracy.",
+            UserWarning,
+            stacklevel=2,
+        )
+
         if raw_values is None:
             raw_values = self._simulate_values(plan)
 
@@ -568,6 +594,7 @@ class AdaptiveErrorMitigation:
             noise_scales=plan.noise_scales,
             shots_used=plan.total_shots,
             method="cdr",
+            placeholder=True,
         )
 
     def _simulate_values(self, plan: MitigationPlan) -> list[float]:

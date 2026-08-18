@@ -398,5 +398,45 @@ class TestMitigationEdgeCases:
         qc.h(0)
         qc.cx(0, 1)
         observable = {"gradient": {0: 0.8, 1: 0.2}}
-        plan = mitigation.create_plan(qc, method="zne", observable=observable)
+        _ = mitigation.create_plan(qc, method="zne", observable=observable)
+
+
+class TestPlaceholderMitigation:
+    """Regression tests for PEC/CDR placeholder warnings (issue #42)."""
+
+    def test_pec_result_is_marked_placeholder(self):
+        mitigation = AdaptiveErrorMitigation(CostModel())
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        plan = mitigation.create_plan(qc, method="pec")
+        with pytest.warns(UserWarning, match="PEC mitigation is a placeholder"):
+            result = mitigation.execute(qc, plan)
+        assert result.placeholder is True
+        assert result.method == "pec"
+
+    def test_cdr_result_is_marked_placeholder(self):
+        mitigation = AdaptiveErrorMitigation(CostModel())
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        plan = mitigation.create_plan(qc, method="cdr")
+        with pytest.warns(UserWarning, match="CDR mitigation is a placeholder"):
+            result = mitigation.execute(qc, plan)
+        assert result.placeholder is True
+        assert result.method == "cdr"
+
+    def test_zne_result_is_not_placeholder(self):
+        mitigation = AdaptiveErrorMitigation(CostModel())
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        plan = mitigation.create_plan(qc, method="zne")
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            result = mitigation.execute(qc, plan)
+        assert result.placeholder is False
+        assert result.method == "zne"
         assert plan.subcircuit_sensitivity is not None
