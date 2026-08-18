@@ -185,10 +185,9 @@ class CostModel:
 
         Computes 1 - Π_gates (1 - error_rate(gate, qubits)).
 
-        If no device is characterized, uses average error rates from
-        typical superconducting hardware:
-            - Single-qubit gate error: 0.05%
-            - Two-qubit gate error: 1.0%
+        When a layout is provided and device calibration data is available,
+        uses per-qubit and per-link error rates for each gate instruction.
+        Falls back to average error rates when per-qubit data is unavailable.
 
         Args:
             circuit: The transpiled quantum circuit.
@@ -200,6 +199,25 @@ class CostModel:
         """
         if not self.device.num_qubits:
             return self._estimate_gate_error_default(circuit)
+
+        if layout is not None or self.device.single_qubit_gate_errors:
+            product = 1.0
+            for instr in circuit.data:
+                gate_name = instr.operation.name
+                qubits = tuple(
+                    circuit.find_bit(q).index for q in instr.qubits
+                )
+                if len(qubits) == 2 and gate_name in TWO_QUBIT_GATES:
+                    fidelity = self._get_gate_fidelity_for_pair(
+                        gate_name, qubits, layout
+                    )
+                else:
+                    fidelity = self._get_gate_fidelity_for_qubit(
+                        gate_name, qubits[0] if qubits else 0, layout
+                    )
+                product *= fidelity
+
+            return 1.0 - product
 
         product = 1.0
         ops = circuit.count_ops()
@@ -237,9 +255,13 @@ class CostModel:
     ) -> float:
         """Get the fidelity for a single gate execution on the device.
 
+        When layout is provided, looks up the specific error rate for
+        the gate on the mapped physical qubit(s). Falls back to average
+        error rates when per-qubit data is unavailable.
+
         Args:
             gate_name: The gate name (e.g., 'sx', 'cx', 'ecr').
-            layout: Optional qubit mapping.
+            layout: Optional qubit mapping from virtual to physical qubits.
 
         Returns:
             Gate fidelity (0 to 1).
@@ -250,6 +272,72 @@ class CostModel:
             avg_error = self._avg_single_qubit_error()
 
         return 1.0 - avg_error
+
+    def _get_gate_fidelity_for_qubit(
+        self, gate_name: str, qubit: int, layout: dict | None = None
+    ) -> float:
+        """Get the fidelity for a single-qubit gate on a specific qubit.
+
+        Uses per-qubit error rates from device calibration when available.
+
+        Args:
+            gate_name: The gate name (e.g., 'sx', 'rz', 'h').
+            qubit: The virtual qubit index the gate acts on.
+            layout: Optional mapping from virtual to physical qubits.
+
+        Returns:
+            Gate fidelity (0 to 1).
+        """
+        if not self.device.single_qubit_gate_errors:
+            return self._get_gate_fidelity(gate_name)
+
+        physical_qubit = layout.get(qubit, qubit) if layout else qubit
+        key = (gate_name, physical_qubit)
+        if key in self.device.single_qubit_gate_errors:
+            return 1.0 - self.device.single_qubit_gate_errors[key]
+
+        for (g, q), error in self.device.single_qubit_gate_errors.items():
+            if q == physical_qubit:
+                return 1.0 - error
+
+        return self._get_gate_fidelity(gate_name)
+
+    def _get_gate_fidelity_for_pair(
+        self, gate_name: str, qubits: tuple[int, ...], layout: dict | None = None
+    ) -> float:
+        """Get the fidelity for a two-qubit gate on a specific qubit pair.
+
+        Uses per-link error rates from device calibration when available.
+
+        Args:
+            gate_name: The gate name (e.g., 'cx', 'ecr', 'swap').
+            qubits: The virtual qubit indices the gate acts on.
+            layout: Optional mapping from virtual to physical qubits.
+
+        Returns:
+            Gate fidelity (0 to 1).
+        """
+        if not self.device.two_qubit_gate_errors:
+            return self._get_gate_fidelity(gate_name)
+
+        if layout:
+            physical_qubits = tuple(layout.get(q, q) for q in qubits)
+        else:
+            physical_qubits = qubits
+
+        key = (gate_name, physical_qubits)
+        if key in self.device.two_qubit_gate_errors:
+            return 1.0 - self.device.two_qubit_gate_errors[key]
+
+        reversed_key = (gate_name, physical_qubits[::-1])
+        if reversed_key in self.device.two_qubit_gate_errors:
+            return 1.0 - self.device.two_qubit_gate_errors[reversed_key]
+
+        for (g, pair), error in self.device.two_qubit_gate_errors.items():
+            if set(pair) == set(physical_qubits):
+                return 1.0 - error
+
+        return self._get_gate_fidelity(gate_name)
 
     def _avg_single_qubit_error(self) -> float:
         """Compute average single-qubit gate error across all qubits."""
