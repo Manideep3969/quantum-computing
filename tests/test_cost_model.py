@@ -294,3 +294,78 @@ class TestErrorBreakdown:
         assert breakdown.decoherence_fidelity == 1.0
         assert breakdown.measurement_fidelity == 1.0
         assert breakdown.total_fidelity == 1.0
+
+
+class TestLayoutAwareFidelity:
+    """Regression tests for layout-aware per-qubit error rates (issue #41)."""
+
+    def test_per_qubit_gate_error_with_layout(self):
+        device = DeviceCharacterization(
+            backend_name="test_device",
+            num_qubits=3,
+            single_qubit_gate_errors={
+                ("sx", 0): 0.001,
+                ("sx", 1): 0.005,
+                ("sx", 2): 0.002,
+            },
+            two_qubit_gate_errors={
+                ("cx", (0, 1)): 0.01,
+                ("cx", (1, 2)): 0.03,
+            },
+        )
+        model = CostModel()
+        model.device = device
+
+        qc = QuantumCircuit(2)
+        qc.sx(0)
+        qc.sx(1)
+        qc.cx(0, 1)
+
+        error_no_layout = model.estimate_gate_error(qc)
+        error_with_layout = model.estimate_gate_error(qc, layout={0: 1, 1: 2})
+
+        assert error_no_layout > 0
+        assert error_with_layout > 0
+        assert error_no_layout != error_with_layout
+
+    def test_per_qubit_fidelity_uses_specific_qubit_rates(self):
+        device = DeviceCharacterization(
+            backend_name="test_device",
+            num_qubits=2,
+            single_qubit_gate_errors={
+                ("sx", 0): 0.001,
+                ("sx", 1): 0.01,
+            },
+            two_qubit_gate_errors={
+                ("cx", (0, 1)): 0.02,
+            },
+        )
+        model = CostModel()
+        model.device = device
+
+        qc = QuantumCircuit(2)
+        qc.sx(0)
+
+        fidelity_q0 = model._get_gate_fidelity_for_qubit("sx", 0)
+        fidelity_q1 = model._get_gate_fidelity_for_qubit("sx", 1)
+
+        assert abs(fidelity_q0 - 0.999) < 1e-6
+        assert abs(fidelity_q1 - 0.990) < 1e-6
+
+    def test_per_pair_fidelity_uses_specific_link_rates(self):
+        device = DeviceCharacterization(
+            backend_name="test_device",
+            num_qubits=3,
+            two_qubit_gate_errors={
+                ("cx", (0, 1)): 0.01,
+                ("cx", (1, 2)): 0.05,
+            },
+        )
+        model = CostModel()
+        model.device = device
+
+        fidelity_01 = model._get_gate_fidelity_for_pair("cx", (0, 1))
+        fidelity_12 = model._get_gate_fidelity_for_pair("cx", (1, 2))
+
+        assert abs(fidelity_01 - 0.99) < 1e-6
+        assert abs(fidelity_12 - 0.95) < 1e-6
