@@ -272,6 +272,16 @@ class CircuitCutter:
         Uses quasi-probability decomposition to combine subcircuit
         results. Each cut introduces a sampling overhead factor of 4.
 
+        .. warning::
+
+            This is a simplified placeholder implementation. Proper QPD
+            reconstruction requires tracking the sign and coefficient of
+            each term in the decomposition. This method sums all
+            subcircuit results uniformly and normalizes, which does not
+            produce correct expectation values when cuts are present. For
+            accurate results, use a full QPD reconstruction implementation
+            such as ``circuit_knitting`` from Qiskit Extensions.
+
         Args:
             subcircuit_results: Results from executing subcircuits.
                 Each element is a dict of {bitstring: count}.
@@ -280,6 +290,19 @@ class CircuitCutter:
         Returns:
             Reconstructed expectation values as a dict.
         """
+        import warnings
+
+        if num_cuts > 0:
+            warnings.warn(
+                "Circuit cutting reconstruction is a simplified placeholder "
+                "that does not track QPD term signs or coefficients. "
+                "Results with cuts present will not be accurate. "
+                "For proper QPD reconstruction, use circuit_knitting "
+                "from Qiskit Extensions.",
+                UserWarning,
+                stacklevel=2,
+            )
+
         if not subcircuit_results:
             return {}
 
@@ -288,7 +311,7 @@ class CircuitCutter:
                 return subcircuit_results[0]
             return {}
 
-        sampling_factor = 4 ** num_cuts
+        sampling_factor = 4**num_cuts
 
         combined = {}
         for result in subcircuit_results:
