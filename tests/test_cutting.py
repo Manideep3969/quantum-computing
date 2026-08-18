@@ -320,3 +320,24 @@ class TestCuttingEdgeCases:
             qc.cx(i, i + 1)
         result = cutter.analyze(qc)
         assert result.estimated_error_uncut >= 0
+
+
+class TestReconstructWarning:
+    """Regression tests for reconstruct() placeholder warning (issue #44)."""
+
+    def test_reconstruct_zero_cuts_no_warning(self):
+        cutter = CircuitCutter(cost_model=CostModel())
+        result = cutter.reconstruct([{"00": 500, "11": 500}], num_cuts=0)
+        assert result == {"00": 500, "11": 500}
+
+    def test_reconstruct_with_cuts_warns(self):
+        cutter = CircuitCutter(cost_model=CostModel())
+        sub_results = [{"00": 250, "11": 250}, {"00": 250, "11": 250}]
+        with pytest.warns(UserWarning, match="simplified placeholder"):
+            result = cutter.reconstruct(sub_results, num_cuts=1)
+        assert len(result) > 0
+
+    def test_reconstruct_empty_results(self):
+        cutter = CircuitCutter(cost_model=CostModel())
+        result = cutter.reconstruct([], num_cuts=0)
+        assert result == {}
