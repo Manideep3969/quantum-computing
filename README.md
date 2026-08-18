@@ -53,10 +53,10 @@ backend = FakeBrisbane()
 
 compiler = QCompiler(backend=backend)
 config = OptimizerConfig(
-    gate_fusion=True,
-    scheduling_method="coherence_aware",
-    error_mitigation=True,
-    circuit_cutting=True,
+    fusion=True,
+    scheduling="coherence_aware",
+    mitigation="adaptive",
+    cutting=True,
     autotune=True,
 )
 result = compiler.optimize(qc, config=config)
@@ -72,9 +72,9 @@ print(f"Passes applied: {result.passes_applied}")
 Unified error estimation using device calibration data. Provides `DeviceCharacterization`, `CircuitMetrics`, and `ErrorBreakdown` dataclasses.
 
 ```python
-from qc_compiler import CostModel, DeviceCharacterization
+from qc_compiler import CostModel
 
-model = CostModel(DeviceCharacterization.from_backend(backend))
+model = CostModel(backend=backend)
 breakdown = model.estimate_fidelity(circuit)
 print(breakdown)
 ```
@@ -88,7 +88,8 @@ from qc_compiler import GateFusion
 
 fusion = GateFusion(cost_model=model)
 result = fusion.optimize(circuit)
-print(f"Gate reduction: {result.gate_reduction_pct:.1f}%")
+gate_reduction = 1 - result.total_gates_after / max(result.total_gates_before, 1)
+print(f"Gate reduction: {gate_reduction:.1%}")
 ```
 
 ### Circuit Cutting (`cutting.py`)
@@ -124,7 +125,8 @@ from qc_compiler import CoherenceAwareScheduler
 
 scheduler = CoherenceAwareScheduler(cost_model=model)
 result = scheduler.schedule(circuit, method="coherence_aware")
-print(f"Idle time reduction: {result.idle_time_avg:.1f}%")
+fidelity_improvement = result.estimated_fidelity_optimized - result.estimated_fidelity_asap
+print(f"Fidelity improvement: {fidelity_improvement:.4f}")
 ```
 
 ### Circuit Batching (`batching.py`)
@@ -136,7 +138,7 @@ from qc_compiler import CircuitBatcher
 
 batcher = CircuitBatcher(cost_model=model)
 plan = batcher.create_batch_plan(circuits)
-print(f"Batches: {len(plan.batches)}")
+print(f"Batches: {plan.num_batches}")
 ```
 
 ### AutoTuner (`autotuning.py`)
@@ -159,7 +161,7 @@ Composes all six passes into a single optimization pipeline with configurable en
 from qc_compiler import QCompiler, OptimizerConfig
 
 compiler = QCompiler(backend=backend)
-config = OptimizerConfig(gate_fusion=True, circuit_cutting=True)
+config = OptimizerConfig(fusion=True, cutting=True)
 result = compiler.optimize(circuit, config=config)
 ```
 
@@ -177,7 +179,7 @@ src/qc_compiler/
   autotuning.py         # Hardware-aware autotuning
   transpiler.py         # QCompiler pipeline
   utils.py              # Shared utilities
-tests/                  # 234 tests
+tests/                  # 316 tests
 notebooks/              # Validation notebooks (01-08)
 docs/
   notes/                # Research notes and paper outline
