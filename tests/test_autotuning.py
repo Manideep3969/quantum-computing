@@ -294,3 +294,30 @@ class TestAutoTunerWithBackend:
         )
         if result.best_circuit is not None:
             assert result.best_circuit.num_qubits == qc.num_qubits
+
+
+class TestSearchSpace:
+    """Regression tests for autotuning search space size (issue #46)."""
+
+    def test_search_space_size_is_216(self):
+        tuner = AutoTuner(cost_model=CostModel())
+        configs = tuner._generate_configurations()
+        assert len(configs) == 216
+
+    def test_search_space_covers_all_routing_methods(self):
+        tuner = AutoTuner(cost_model=CostModel())
+        configs = tuner._generate_configurations()
+        routing_methods = {c.routing_method for c in configs}
+        assert routing_methods == {"stochastic", "sabre"}
+
+    def test_search_space_covers_all_layout_methods(self):
+        tuner = AutoTuner(cost_model=CostModel())
+        configs = tuner._generate_configurations()
+        layout_methods = {c.layout_method for c in configs}
+        assert layout_methods == {"dense", "vf2_layout"}
+
+    def test_search_space_covers_all_optimization_levels(self):
+        tuner = AutoTuner(cost_model=CostModel())
+        configs = tuner._generate_configurations()
+        opt_levels = {c.optimization_level for c in configs}
+        assert opt_levels == {1, 2, 3}

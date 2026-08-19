@@ -5,9 +5,9 @@ this module searches over transpilation configurations to find the
 device-optimal one, then caches results for similar circuit families.
 
 The search space includes:
-    - routing_method: stochastic, vf2, sabre
-    - layout_method: trivial, dense, vf2_layout
-    - optimization_level: 0, 1, 2, 3
+    - routing_method: stochastic, sabre
+    - layout_method: dense, vf2_layout
+    - optimization_level: 1, 2, 3
     - seed: 0, 1, 2 (randomness in routing/layout)
     - gate_fusion: on/off
     - scheduling_method: asap, alap, coherence_aware
@@ -260,9 +260,9 @@ class AutoTuner:
 
         Returns a reduced set of configurations that covers the most
         impactful parameter combinations. The full search space
-        (3 routing × 3 layout × 4 opt × 3 seed × 2 fusion × 3 scheduling
-        = 648 configs) is reduced by only varying the most impactful
-        parameters together.
+        (2 routing × 2 layout × 3 opt × 3 seed × 2 fusion × 3 scheduling
+        = 216 configs) varies the most impactful parameters
+        together.
 
         Returns:
             List of TranspileConfig objects to evaluate.

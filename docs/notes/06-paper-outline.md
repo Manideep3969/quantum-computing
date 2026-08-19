@@ -375,7 +375,7 @@ AutoTVM and Triton search over kernel implementation variants (tiling, unrolling
 
 ### 10.2 Quantum Adaptation
 
-Qiskit's transpiler offers routing methods (stochastic, VF2), layout methods (trivial, VF2Layout, dense), and optimization levels (0–3). But there is no systematic autotuning over these options for a specific circuit-device pair.
+Qiskit's transpiler offers routing methods (stochastic, sabre), layout methods (dense, VF2Layout), optimization levels (1–3), and scheduling methods (ASAP, ALAP, coherence-aware). But there is no systematic autotuning over these options for a specific circuit-device pair.
 
 We propose **quantum autotuning**: search over transpilation configurations, benchmark each on the target device, and select the optimal one.
 
@@ -525,7 +525,7 @@ Algorithm:
 **Objective:** Show that autotuning transpiler settings outperforms defaults.
 
 **Protocol:**
-1. Define search space: 3 routing × 3 layout × 4 opt_levels × 3 seeds × 2 fusion = 216 configurations
+1. Define search space: 2 routing × 2 layout × 3 opt_levels × 3 seeds × 2 fusion × 3 scheduling = 216 configurations
 2. For each benchmark circuit:
    a. Transpile with each configuration, estimate error
    b. Select top-5 configurations, run on hardware with 1024 shots (screening)
