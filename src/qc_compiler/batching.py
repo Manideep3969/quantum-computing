@@ -218,7 +218,9 @@ class CircuitBatcher:
         """Batch circuits with same depth on non-overlapping qubit subsets.
 
         Circuits using different qubits of the same device can run
-        in parallel, maximizing qubit utilization.
+        in parallel, maximizing qubit utilization. Uses the device's
+        total qubit count (max_qubits) to determine how many circuits
+        can be placed without overlapping.
 
         Args:
             circuits: List of quantum circuits.
@@ -240,22 +242,22 @@ class CircuitBatcher:
         batch_sizes = []
 
         for depth, indices in depth_groups.items():
-            current_batch_qubits = set()
             current_batch = []
+            total_qubits_used = 0
 
             for idx in indices:
                 circuit = circuits[idx]
-                circuit_qubits = set(range(circuit.num_qubits))
+                n_qubits = circuit.num_qubits
 
-                if not current_batch_qubits & circuit_qubits:
+                if total_qubits_used + n_qubits <= self.max_qubits:
                     current_batch.append(circuit)
-                    current_batch_qubits |= circuit_qubits
+                    total_qubits_used += n_qubits
                 else:
                     if current_batch:
                         batches.append(current_batch)
                         batch_sizes.append(len(current_batch))
                     current_batch = [circuit]
-                    current_batch_qubits = circuit_qubits.copy()
+                    total_qubits_used = n_qubits
 
             if current_batch:
                 batches.append(current_batch)
