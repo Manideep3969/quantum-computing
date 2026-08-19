@@ -319,3 +319,37 @@ class TestBatchingEdgeCases:
     def test_estimate_structural_speedup_empty(self, batcher):
         speedup = batcher._estimate_structural_speedup([], [])
         assert speedup == 1.0
+
+
+class TestStructuralBatchingDeviceQubits:
+    """Regression tests for structural batching with device qubit count (issue #45)."""
+
+    def test_same_size_circuits_can_be_batched_on_large_device(self):
+        batcher = CircuitBatcher(cost_model=CostModel(), max_qubits=127)
+        circuits = [QuantumCircuit(3) for _ in range(4)]
+        for qc in circuits:
+            qc.h(0)
+            qc.cx(0, 1)
+            qc.cx(1, 2)
+        plan = batcher.create_batch_plan(circuits, strategy="structural")
+        assert plan.num_batches >= 1
+        assert plan.total_circuits == 4
+
+    def test_small_circuits_batch_together_on_device(self):
+        batcher = CircuitBatcher(cost_model=CostModel(), max_qubits=10)
+        circuits = [QuantumCircuit(3) for _ in range(3)]
+        for qc in circuits:
+            qc.h(0)
+            qc.cx(0, 1)
+        plan = batcher.create_batch_plan(circuits, strategy="structural")
+        assert plan.total_circuits == 3
+
+    def test_circuits_exceeding_device_capacity_split_into_batches(self):
+        batcher = CircuitBatcher(cost_model=CostModel(), max_qubits=5)
+        circuits = [QuantumCircuit(3) for _ in range(4)]
+        for qc in circuits:
+            qc.h(0)
+            qc.cx(0, 1)
+        plan = batcher.create_batch_plan(circuits, strategy="structural")
+        assert plan.total_circuits == 4
+        assert plan.num_batches >= 2
