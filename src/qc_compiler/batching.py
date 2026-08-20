@@ -20,6 +20,7 @@ Three batching strategies are provided:
        same device, maximizing qubit utilization.
 """
 
+import hashlib
 from dataclasses import dataclass, field
 
 from qiskit import QuantumCircuit
@@ -302,7 +303,7 @@ class CircuitBatcher:
             )
             core_gates.append((gate_name, qubits, params))
 
-        return hash(tuple(core_gates))
+        return int(hashlib.sha256(str(tuple(core_gates)).encode()).hexdigest(), 16)
 
     def _detect_measurement_basis(
         self, circuit: QuantumCircuit
