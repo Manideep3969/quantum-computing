@@ -353,3 +353,27 @@ class TestStructuralBatchingDeviceQubits:
         plan = batcher.create_batch_plan(circuits, strategy="structural")
         assert plan.total_circuits == 4
         assert plan.num_batches >= 2
+
+
+class TestDeterministicCoreHash:
+    """Regression test for deterministic hashing (issue #51)."""
+
+    def test_core_hash_is_deterministic_across_calls(self):
+        batcher = CircuitBatcher(cost_model=CostModel())
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        hash1 = batcher._compute_core_hash(qc)
+        hash2 = batcher._compute_core_hash(qc)
+        assert hash1 == hash2
+
+    def test_core_hash_differs_for_different_circuits(self):
+        batcher = CircuitBatcher(cost_model=CostModel())
+        qc1 = QuantumCircuit(2)
+        qc1.h(0)
+        qc1.cx(0, 1)
+        qc2 = QuantumCircuit(2)
+        qc2.x(0)
+        hash1 = batcher._compute_core_hash(qc1)
+        hash2 = batcher._compute_core_hash(qc2)
+        assert hash1 != hash2
