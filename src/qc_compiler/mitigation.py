@@ -262,6 +262,8 @@ class AdaptiveErrorMitigation:
         """
         resolved_method = "zne" if plan.method == "adaptive" else plan.method
 
+        self._last_circuit = circuit
+
         if resolved_method == "zne":
             return self._extrapolate_zne(plan, raw_values)
         elif resolved_method == "pec":
@@ -605,7 +607,8 @@ class AdaptiveErrorMitigation:
         """Simulate noisy expectation values from cost model.
 
         Uses the cost model's fidelity estimate to generate
-        plausible noisy values at each noise scale.
+        plausible noisy values at each noise scale. If no circuit
+        is available, falls back to a default fidelity estimate.
 
         Args:
             plan: The mitigation plan.
@@ -613,10 +616,29 @@ class AdaptiveErrorMitigation:
         Returns:
             List of simulated expectation values.
         """
-        base_fidelity = 0.85
+        import warnings
+
+        warnings.warn(
+            "No raw values provided; using cost model to simulate "
+            "expectation values. Results are approximate and should "
+            "not be relied upon for accuracy.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+        if (
+            hasattr(self, "_last_circuit")
+            and self._last_circuit is not None
+        ):
+            base_fidelity = self.cost_model.estimate_fidelity(
+                self._last_circuit
+            ).total_fidelity
+        else:
+            base_fidelity = 0.85
+
         values = []
         for scale in plan.noise_scales:
-            noisy = base_fidelity ** scale
+            noisy = base_fidelity**scale
             values.append(float(noisy))
         return values
 

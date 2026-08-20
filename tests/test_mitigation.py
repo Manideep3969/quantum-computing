@@ -432,11 +432,7 @@ class TestPlaceholderMitigation:
         qc.h(0)
         qc.cx(0, 1)
         plan = mitigation.create_plan(qc, method="zne")
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            result = mitigation.execute(qc, plan)
+        result = mitigation.execute(qc, plan, raw_values=[0.9, 0.8, 0.7])
         assert result.placeholder is False
         assert result.method == "zne"
         assert plan.subcircuit_sensitivity is not None
@@ -471,3 +467,40 @@ class TestAdaptiveMitigation:
         plan_adaptive = mitigation.create_plan(qc, method="adaptive")
         plan_zne = mitigation.create_plan(qc, method="zne")
         assert plan_adaptive.noise_scales == plan_zne.noise_scales
+
+
+class TestSimulateValues:
+    """Regression tests for _simulate_values using cost model (issue #48)."""
+
+    def test_simulate_values_warns_when_no_raw_values(self):
+        mitigation = AdaptiveErrorMitigation(CostModel())
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        plan = mitigation.create_plan(qc, method="zne")
+        with pytest.warns(UserWarning, match="No raw values provided"):
+            mitigation.execute(qc, plan, raw_values=None)
+
+    def test_simulate_values_uses_cost_model_fidelity(self):
+        mitigation = AdaptiveErrorMitigation(CostModel())
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        plan = mitigation.create_plan(qc, method="zne")
+        with pytest.warns(UserWarning, match="No raw values provided"):
+            result = mitigation.execute(qc, plan)
+        assert result.raw_values is not None
+        assert len(result.raw_values) > 0
+
+    def test_simulate_values_no_warning_with_raw_values(self):
+        mitigation = AdaptiveErrorMitigation(CostModel())
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        plan = mitigation.create_plan(qc, method="zne")
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            result = mitigation.execute(qc, plan, raw_values=[0.9, 0.8])
+        assert result.placeholder is False
