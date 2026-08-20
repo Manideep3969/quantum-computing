@@ -63,7 +63,7 @@ class MitigationPlan:
         subcircuit_sensitivity: Mapping from segment index to
             sensitivity score.
         total_shots: Total number of shots across all scales.
-        method: Mitigation method ('zne', 'pec', or 'cdr').
+        method: Mitigation method ('zne', 'adaptive', 'pec', or 'cdr').
         segments: Number of circuit segments identified.
         shots_per_segment: Mapping from segment index to shot count.
         scales_per_segment: Mapping from segment index to list of
@@ -175,18 +175,20 @@ class AdaptiveErrorMitigation:
                 variational sensitivity. If None, uses two-qubit
                 gate count as a proxy for sensitivity.
             total_shots: Total shot budget.
-            method: Mitigation method ('zne', 'pec', or 'cdr').
+            method: Mitigation method ('zne', 'adaptive', 'pec', or 'cdr').
             num_segments: Number of circuit segments. If None,
                 segments are determined by two-qubit gate boundaries.
 
         Returns:
             A MitigationPlan with allocation details.
         """
-        if method not in ("zne", "pec", "cdr"):
+        if method not in ("zne", "pec", "cdr", "adaptive"):
             raise ValueError(
                 f"Unknown mitigation method '{method}'. "
-                "Use 'zne', 'pec', or 'cdr'."
+                "Use 'zne', 'pec', 'cdr', or 'adaptive'."
             )
+
+        resolved_method = "zne" if method == "adaptive" else method
 
         if circuit.num_qubits == 0 or circuit.depth() == 0:
             return MitigationPlan(
@@ -208,7 +210,7 @@ class AdaptiveErrorMitigation:
         )
 
         scales_per_segment = self._assign_noise_scales(
-            sensitivity, method
+            sensitivity, resolved_method
         )
 
         all_scales = sorted(
@@ -258,11 +260,13 @@ class AdaptiveErrorMitigation:
         Returns:
             A MitigationResult with mitigated values.
         """
-        if plan.method == "zne":
+        resolved_method = "zne" if plan.method == "adaptive" else plan.method
+
+        if resolved_method == "zne":
             return self._extrapolate_zne(plan, raw_values)
-        elif plan.method == "pec":
+        elif resolved_method == "pec":
             return self._execute_pec(plan, raw_values)
-        elif plan.method == "cdr":
+        elif resolved_method == "cdr":
             return self._execute_cdr(plan, raw_values)
         else:
             return MitigationResult(method=plan.method)
@@ -469,7 +473,7 @@ class AdaptiveErrorMitigation:
             raw_values = self._simulate_values(plan)
 
         if not scales or not raw_values:
-            return MitigationResult(method="zne")
+            return MitigationResult(method=plan.method)
 
         if len(raw_values) == 1:
             return MitigationResult(
@@ -478,7 +482,7 @@ class AdaptiveErrorMitigation:
                 noise_scales=scales,
                 extrapolation_coefficients=[1.0],
                 shots_used=plan.total_shots,
-                method="zne",
+                method=plan.method,
             )
 
         if len(raw_values) == 2:
@@ -501,7 +505,7 @@ class AdaptiveErrorMitigation:
                 noise_scales=scales[:2],
                 extrapolation_coefficients=[c1, c2] if abs(denom) >= 1e-12 else [1.0, 0.0],
                 shots_used=plan.total_shots,
-                method="zne",
+                method=plan.method,
             )
 
         coeffs = self._richardson_coefficients(scales[:len(raw_values)])
@@ -513,7 +517,7 @@ class AdaptiveErrorMitigation:
             noise_scales=scales[:len(raw_values)],
             extrapolation_coefficients=coeffs,
             shots_used=plan.total_shots,
-            method="zne",
+            method=plan.method,
         )
 
     def _execute_pec(
