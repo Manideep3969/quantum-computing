@@ -4,8 +4,12 @@ Provides helper functions for circuit analysis and backend property
 extraction used across all optimization modules.
 """
 
+import logging
+
 from qiskit import QuantumCircuit
 from qiskit.providers import BackendV2
+
+logger = logging.getLogger(__name__)
 
 TWO_QUBIT_GATES = {"cx", "cz", "ecr", "swap", "rxx", "rzz", "ryy", "crx", "cry", "crz"}
 
@@ -43,20 +47,20 @@ def get_backend_properties(backend: BackendV2) -> dict:
         try:
             t1_val = props.qubit_property(qubit, "T1")[0]
             t1_times[qubit] = float(t1_val)
-        except Exception:  # noqa: S110, BLE001
-            pass
+        except Exception:  # noqa: BLE001
+            logger.warning("Could not extract T1 for qubit %d", qubit)
 
         try:
             t2_val = props.qubit_property(qubit, "T2")[0]
             t2_times[qubit] = float(t2_val)
-        except Exception:  # noqa: S110, BLE001
-            pass
+        except Exception:  # noqa: BLE001
+            logger.warning("Could not extract T2 for qubit %d", qubit)
 
         try:
             ro_val = props.qubit_property(qubit, "readout_error")[0]
             readout_errors[qubit] = float(ro_val)
-        except Exception:  # noqa: S110, BLE001
-            pass
+        except Exception:  # noqa: BLE001
+            logger.warning("Could not extract readout error for qubit %d", qubit)
 
     single_qubit_gate_errors = {}
     two_qubit_gate_errors = {}
