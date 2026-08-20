@@ -13,6 +13,13 @@ logger = logging.getLogger(__name__)
 
 TWO_QUBIT_GATES = {"cx", "cz", "ecr", "swap", "rxx", "rzz", "ryy", "crx", "cry", "crz"}
 
+DEFAULT_SINGLE_QUBIT_ERROR = 0.0005
+DEFAULT_TWO_QUBIT_ERROR = 0.01
+DEFAULT_READOUT_ERROR = 0.015
+DEFAULT_T2_TIME = 150e-6
+DEFAULT_SINGLE_QUBIT_GATE_TIME = 50e-9
+DEFAULT_TWO_QUBIT_GATE_TIME = 300e-9
+
 
 def get_backend_properties(backend: BackendV2) -> dict:
     """Extract calibration properties from a quantum backend.
@@ -164,8 +171,8 @@ def get_avg_gate_time(device_props: dict, gate_type: str = "all") -> float:
 
     if not gate_lengths:
         if gate_type == "two":
-            return 300e-9
-        return 50e-9
+            return DEFAULT_TWO_QUBIT_GATE_TIME
+        return DEFAULT_SINGLE_QUBIT_GATE_TIME
 
     times = []
     for (gate_name, qubits), duration in gate_lengths.items():
@@ -174,7 +181,7 @@ def get_avg_gate_time(device_props: dict, gate_type: str = "all") -> float:
 
     if not times:
         if gate_type == "two":
-            return 300e-9
-        return 50e-9
+            return DEFAULT_TWO_QUBIT_GATE_TIME
+        return DEFAULT_SINGLE_QUBIT_GATE_TIME
 
     return sum(times) / len(times)

@@ -21,6 +21,12 @@ from qc_compiler.mitigation import AdaptiveErrorMitigation, MitigationPlan, Miti
 from qc_compiler.scheduling import CoherenceAwareScheduler, ScheduleResult
 from qc_compiler.transpiler import OptimizerConfig, QCompiler, QCompilerResult
 from qc_compiler.utils import (
+    DEFAULT_READOUT_ERROR,
+    DEFAULT_SINGLE_QUBIT_ERROR,
+    DEFAULT_SINGLE_QUBIT_GATE_TIME,
+    DEFAULT_T2_TIME,
+    DEFAULT_TWO_QUBIT_ERROR,
+    DEFAULT_TWO_QUBIT_GATE_TIME,
     TWO_QUBIT_GATES,
     compute_circuit_depth,
     compute_cnot_count,
@@ -30,6 +36,12 @@ from qc_compiler.utils import (
 )
 
 __all__ = [
+    "DEFAULT_READOUT_ERROR",
+    "DEFAULT_SINGLE_QUBIT_ERROR",
+    "DEFAULT_SINGLE_QUBIT_GATE_TIME",
+    "DEFAULT_T2_TIME",
+    "DEFAULT_TWO_QUBIT_ERROR",
+    "DEFAULT_TWO_QUBIT_GATE_TIME",
     "TWO_QUBIT_GATES",
     "AdaptiveErrorMitigation",
     "AutoTuner",

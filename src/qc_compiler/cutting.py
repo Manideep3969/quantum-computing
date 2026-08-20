@@ -43,7 +43,13 @@ import numpy as np
 from qiskit import QuantumCircuit
 
 from qc_compiler.cost_model import CostModel
-from qc_compiler.utils import TWO_QUBIT_GATES
+from qc_compiler.utils import (
+    DEFAULT_SINGLE_QUBIT_ERROR,
+    DEFAULT_SINGLE_QUBIT_GATE_TIME,
+    DEFAULT_T2_TIME,
+    DEFAULT_TWO_QUBIT_ERROR,
+    TWO_QUBIT_GATES,
+)
 
 
 @dataclass
@@ -535,8 +541,8 @@ class CircuitCutter:
             depth = max(1, circuit.depth() // num_groups)
             avg_t2 = self._avg_t2()
             decoherence_error = 1 - float(
-                2.0 ** (-depth * 50e-9 / avg_t2)
-            ) if avg_t2 > 0 else 0.01
+                2.0 ** (-depth * DEFAULT_SINGLE_QUBIT_GATE_TIME / avg_t2)
+            ) if avg_t2 > 0 else DEFAULT_TWO_QUBIT_ERROR
 
             group_error = 1 - (1 - gate_error) * (1 - decoherence_error)
             group_errors.append(group_error)
@@ -654,7 +660,7 @@ class CircuitCutter:
                 self.cost_model.device.single_qubit_gate_errors.values()
             )
             return sum(errors) / len(errors)
-        return 0.0005
+        return DEFAULT_SINGLE_QUBIT_ERROR
 
     def _avg_two_qubit_error(self) -> float:
         """Get average two-qubit gate error from device or default."""
@@ -663,11 +669,11 @@ class CircuitCutter:
                 self.cost_model.device.two_qubit_gate_errors.values()
             )
             return sum(errors) / len(errors)
-        return 0.01
+        return DEFAULT_TWO_QUBIT_ERROR
 
     def _avg_t2(self) -> float:
         """Get average T2 time from device or default."""
         if self.cost_model.device.t2_times:
             times = list(self.cost_model.device.t2_times.values())
             return sum(times) / len(times)
-        return 150e-6
+        return DEFAULT_T2_TIME
