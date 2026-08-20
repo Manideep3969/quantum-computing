@@ -124,6 +124,8 @@ class CostModel:
                      idealized model.
         """
         self.device = self._load_device_characterization(backend)
+        self._cached_avg_single_qubit_error = None
+        self._cached_avg_two_qubit_error = None
 
     def _load_device_characterization(self, backend) -> DeviceCharacterization:
         """Load device calibration data from a backend.
@@ -346,19 +348,29 @@ class CostModel:
 
     def _avg_single_qubit_error(self) -> float:
         """Compute average single-qubit gate error across all qubits."""
+        if self._cached_avg_single_qubit_error is not None:
+            return self._cached_avg_single_qubit_error
+
         if not self.device.single_qubit_gate_errors:
-            return DEFAULT_SINGLE_QUBIT_ERROR
+            self._cached_avg_single_qubit_error = DEFAULT_SINGLE_QUBIT_ERROR
+            return self._cached_avg_single_qubit_error
 
         errors = list(self.device.single_qubit_gate_errors.values())
-        return sum(errors) / len(errors)
+        self._cached_avg_single_qubit_error = sum(errors) / len(errors)
+        return self._cached_avg_single_qubit_error
 
     def _avg_two_qubit_error(self) -> float:
         """Compute average two-qubit gate error across all qubit pairs."""
+        if self._cached_avg_two_qubit_error is not None:
+            return self._cached_avg_two_qubit_error
+
         if not self.device.two_qubit_gate_errors:
-            return DEFAULT_TWO_QUBIT_ERROR
+            self._cached_avg_two_qubit_error = DEFAULT_TWO_QUBIT_ERROR
+            return self._cached_avg_two_qubit_error
 
         errors = list(self.device.two_qubit_gate_errors.values())
-        return sum(errors) / len(errors)
+        self._cached_avg_two_qubit_error = sum(errors) / len(errors)
+        return self._cached_avg_two_qubit_error
 
     def estimate_decoherence_error(
         self, circuit: QuantumCircuit, layout: dict | None = None
