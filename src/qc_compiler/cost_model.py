@@ -18,6 +18,11 @@ from dataclasses import dataclass, field
 from qiskit import QuantumCircuit
 
 from qc_compiler.utils import (
+    DEFAULT_READOUT_ERROR,
+    DEFAULT_SINGLE_QUBIT_ERROR,
+    DEFAULT_SINGLE_QUBIT_GATE_TIME,
+    DEFAULT_T2_TIME,
+    DEFAULT_TWO_QUBIT_ERROR,
     TWO_QUBIT_GATES,
     compute_circuit_depth,
     get_backend_properties,
@@ -342,7 +347,7 @@ class CostModel:
     def _avg_single_qubit_error(self) -> float:
         """Compute average single-qubit gate error across all qubits."""
         if not self.device.single_qubit_gate_errors:
-            return 0.0005
+            return DEFAULT_SINGLE_QUBIT_ERROR
 
         errors = list(self.device.single_qubit_gate_errors.values())
         return sum(errors) / len(errors)
@@ -350,7 +355,7 @@ class CostModel:
     def _avg_two_qubit_error(self) -> float:
         """Compute average two-qubit gate error across all qubit pairs."""
         if not self.device.two_qubit_gate_errors:
-            return 0.01
+            return DEFAULT_TWO_QUBIT_ERROR
 
         errors = list(self.device.two_qubit_gate_errors.values())
         return sum(errors) / len(errors)
@@ -401,12 +406,9 @@ class CostModel:
 
         Uses typical superconducting qubit T2 time of 150 μs.
         """
-        DEFAULT_T2 = 150e-6
-        DEFAULT_GATE_TIME = 50e-9
-
         depth = compute_circuit_depth(circuit)
-        total_time = depth * DEFAULT_GATE_TIME
-        fidelity = float(2.0 ** (-total_time / DEFAULT_T2))
+        total_time = depth * DEFAULT_SINGLE_QUBIT_GATE_TIME
+        fidelity = float(2.0 ** (-total_time / DEFAULT_T2_TIME))
         product = fidelity**circuit.num_qubits
 
         return 1.0 - product
@@ -414,7 +416,7 @@ class CostModel:
     def _avg_gate_time(self) -> float:
         """Compute average gate duration across all gate types."""
         if not self.device.gate_lengths:
-            return 50e-9
+            return DEFAULT_SINGLE_QUBIT_GATE_TIME
 
         times = list(self.device.gate_lengths.values())
         return sum(times) / len(times)
@@ -435,7 +437,6 @@ class CostModel:
         measured_qubits = self._get_measured_qubits(circuit)
 
         if not self.device.readout_errors:
-            DEFAULT_READOUT_ERROR = 0.015
             return 1.0 - (1.0 - DEFAULT_READOUT_ERROR) ** len(measured_qubits)
 
         product = 1.0

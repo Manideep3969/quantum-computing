@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from qiskit import QuantumCircuit
 
 from qc_compiler.cost_model import CostModel
+from qc_compiler.utils import DEFAULT_SINGLE_QUBIT_GATE_TIME
 
 
 @dataclass
@@ -504,7 +505,7 @@ class CoherenceAwareScheduler:
         if self.cost_model.device.gate_lengths:
             times = list(self.cost_model.device.gate_lengths.values())
             return sum(times) / len(times)
-        return 50e-9
+        return DEFAULT_SINGLE_QUBIT_GATE_TIME
 
     def _compute_t2_priority(self, num_qubits: int) -> dict[int, float]:
         """Compute per-qubit T2-based scheduling priority.
