@@ -440,3 +440,34 @@ class TestPlaceholderMitigation:
         assert result.placeholder is False
         assert result.method == "zne"
         assert plan.subcircuit_sensitivity is not None
+
+
+class TestAdaptiveMitigation:
+    """Regression tests for 'adaptive' mitigation method (issue #47)."""
+
+    def test_adaptive_creates_plan(self):
+        mitigation = AdaptiveErrorMitigation(CostModel())
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        plan = mitigation.create_plan(qc, method="adaptive")
+        assert plan.method == "adaptive"
+
+    def test_adaptive_executes_as_zne(self):
+        mitigation = AdaptiveErrorMitigation(CostModel())
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        plan = mitigation.create_plan(qc, method="adaptive")
+        result = mitigation.execute(qc, plan)
+        assert result.method == "adaptive"
+        assert result.placeholder is False
+
+    def test_adaptive_uses_zne_noise_scales(self):
+        mitigation = AdaptiveErrorMitigation(CostModel())
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        plan_adaptive = mitigation.create_plan(qc, method="adaptive")
+        plan_zne = mitigation.create_plan(qc, method="zne")
+        assert plan_adaptive.noise_scales == plan_zne.noise_scales

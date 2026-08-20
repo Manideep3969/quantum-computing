@@ -237,11 +237,8 @@ class QCompiler:
                             )
 
                         if config.mitigation != "none":
-                            mitigation_method = config.mitigation
-                            if mitigation_method == "adaptive":
-                                mitigation_method = "zne"
                             sub_mitigation = self.mitigation.create_plan(
-                                sub_current, method=mitigation_method
+                                sub_current, method=config.mitigation
                             )
                             sub_result.mitigation_plan = sub_mitigation
                             sub_result.passes_applied.append(
@@ -280,11 +277,8 @@ class QCompiler:
 
         # Pass 5: Error Mitigation
         if config.mitigation != "none":
-            mitigation_method = config.mitigation
-            if mitigation_method == "adaptive":
-                mitigation_method = "zne"
             mitigation_plan = self.mitigation.create_plan(
-                current_circuit, method=mitigation_method
+                current_circuit, method=config.mitigation
             )
             result.mitigation_plan = mitigation_plan
             passes_applied.append(f"mitigation:{config.mitigation}")
