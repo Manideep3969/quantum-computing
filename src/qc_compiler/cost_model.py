@@ -475,7 +475,7 @@ class CostModel:
                 for qubit in instr.qubits:
                     measured.add(circuit.find_bit(qubit).index)
         if not measured:
-            measured = set(range(circuit.num_qubits))
+            return []
         return sorted(measured)
 
     def estimate_fidelity(

@@ -167,7 +167,24 @@ class TestCostModelNoBackend:
         qc.h(0)
         qc.cx(0, 1)
         error = model.estimate_measurement_error(qc)
+        assert error == 0.0
+
+    def test_measurement_error_only_measured_qubits(self):
+        model = CostModel()
+        device = DeviceCharacterization(
+            backend_name="test",
+            num_qubits=3,
+            readout_errors={0: 0.01, 1: 0.02, 2: 0.03},
+        )
+        model = CostModel()
+        model.device = device
+        qc = QuantumCircuit(3, 1)
+        qc.h(0)
+        qc.cx(0, 1)
+        qc.measure(0, 0)
+        error = model.estimate_measurement_error(qc)
         assert error > 0
+        assert error < 0.02
 
     def test_fidelity_bell_state(self):
         model = CostModel()
