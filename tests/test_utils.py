@@ -1,5 +1,8 @@
 """Tests for qc_compiler.utils module."""
 
+import logging
+from unittest.mock import MagicMock
+
 from qiskit import QuantumCircuit
 from qiskit_ibm_runtime.fake_provider import FakeBrisbane
 
@@ -367,3 +370,34 @@ class TestGetBackendPropertiesEdgeCases:
         assert len(props["gate_lengths"]) > 0
         for length in props["gate_lengths"].values():
             assert length > 0
+
+
+class TestBackendPropertyExtractionWarnings:
+    """Regression tests for backend property extraction logging (issue #49)."""
+
+    def test_missing_t1_logs_warning(self, caplog):
+        backend = MagicMock()
+        backend.name = "test_backend"
+        backend.num_qubits = 2
+        mock_props = MagicMock()
+        mock_props.qubit_property.side_effect = Exception("no T1 data")
+        mock_props.gates = []
+        backend.properties.return_value = mock_props
+
+        with caplog.at_level(logging.WARNING, logger="qc_compiler.utils"):
+            result = get_backend_properties(backend)
+        assert "Could not extract T1" in caplog.text
+        assert result["t1_times"] == {}
+
+    def test_missing_readout_error_logs_warning(self, caplog):
+        backend = MagicMock()
+        backend.name = "test_backend"
+        backend.num_qubits = 2
+        mock_props = MagicMock()
+        mock_props.qubit_property.side_effect = Exception("no data")
+        mock_props.gates = []
+        backend.properties.return_value = mock_props
+
+        with caplog.at_level(logging.WARNING, logger="qc_compiler.utils"):
+            get_backend_properties(backend)
+        assert "Could not extract readout error" in caplog.text
