@@ -443,3 +443,51 @@ class TestSchedulingUnitaryEquivalence:
         assert asap_result.method == "asap"
         assert alap_result.method == "alap"
         assert asap_result.method != alap_result.method
+
+
+class TestGateDurationCalibration:
+    """Regression tests for gate duration from device calibration (issue #57)."""
+
+    def test_gate_duration_uses_device_data(self):
+        from qc_compiler.cost_model import DeviceCharacterization
+
+        device = DeviceCharacterization(
+            backend_name="test",
+            num_qubits=2,
+            gate_lengths={
+                ("sx", (0,)): 50e-9,
+                ("sx", (1,)): 60e-9,
+                ("cx", (0, 1)): 300e-9,
+            },
+        )
+        model = CostModel()
+        model.device = device
+        scheduler = CoherenceAwareScheduler(cost_model=model)
+
+        assert scheduler._get_gate_duration("sx", [0]) == 1
+        assert scheduler._get_gate_duration("sx", [1]) == 1
+        assert scheduler._get_gate_duration("cx", [0, 1]) == 5
+
+    def test_gate_duration_fallback_without_device(self):
+        scheduler = CoherenceAwareScheduler(cost_model=CostModel())
+        assert scheduler._get_gate_duration("sx", [0]) == 1
+        assert scheduler._get_gate_duration("cx", [0, 1]) == 3
+
+    def test_gate_duration_matches_same_size_gate(self):
+        from qc_compiler.cost_model import DeviceCharacterization
+
+        device = DeviceCharacterization(
+            backend_name="test",
+            num_qubits=3,
+            gate_lengths={
+                ("sx", (0,)): 50e-9,
+                ("cx", (0, 1)): 250e-9,
+                ("cx", (1, 2)): 400e-9,
+            },
+        )
+        model = CostModel()
+        model.device = device
+        scheduler = CoherenceAwareScheduler(cost_model=model)
+
+        assert scheduler._get_gate_duration("cx", [0, 1]) == 5
+        assert scheduler._get_gate_duration("cx", [1, 2]) == 8
