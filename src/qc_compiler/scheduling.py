@@ -481,9 +481,12 @@ class CoherenceAwareScheduler:
     ) -> int:
         """Get the duration of a gate in abstract time units.
 
-        Uses device calibration data when available. Falls back to
-        a simple model: single-qubit gates = 1 unit, two-qubit gates
-        = 3 units (reflecting typical duration ratios on IBM hardware).
+        Uses device calibration data when available. Looks up the
+        actual gate duration from gate_lengths and converts it to
+        abstract units relative to a single-qubit gate. Falls back
+        to a simple model: single-qubit gates = 1 unit, two-qubit
+        gates = 3 units (reflecting typical duration ratios on IBM
+        hardware).
 
         Args:
             gate_name: Name of the gate.
@@ -492,6 +495,26 @@ class CoherenceAwareScheduler:
         Returns:
             Duration in abstract time units.
         """
+        gate_lengths = self.cost_model.device.gate_lengths
+
+        if gate_lengths:
+            avg_sq_time = DEFAULT_SINGLE_QUBIT_GATE_TIME
+
+            sq_times = [
+                v for (g, qs), v in gate_lengths.items()
+                if len(qs) == 1
+            ]
+            if sq_times:
+                avg_sq_time = sum(sq_times) / len(sq_times)
+
+            key = (gate_name, tuple(qubits))
+            if key in gate_lengths:
+                return max(1, round(gate_lengths[key] / avg_sq_time))
+
+            for (g, qs), v in gate_lengths.items():
+                if g == gate_name and len(qs) == len(qubits):
+                    return max(1, round(v / avg_sq_time))
+
         if qubits and len(qubits) >= 2:
             return 3
         return 1
