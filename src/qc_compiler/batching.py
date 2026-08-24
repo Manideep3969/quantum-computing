@@ -182,6 +182,8 @@ class CircuitBatcher:
         """
         core_groups = self._group_by_unitary_core(circuits)
 
+        circuit_indices = {id(c): i for i, c in enumerate(circuits)}
+
         batches = []
         measurement_groups = {}
         unitary_core_groups = {}
@@ -189,7 +191,7 @@ class CircuitBatcher:
         for core_hash, group in core_groups.items():
             batches.append(group)
             unitary_core_groups[core_hash] = [
-                circuits.index(c) for c in group
+                circuit_indices[id(c)] for c in group
             ]
 
             basis_labels = []
