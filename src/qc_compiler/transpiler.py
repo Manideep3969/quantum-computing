@@ -59,6 +59,21 @@ class OptimizerConfig:
     batch: bool = True
     autotune: bool = False
 
+    def __post_init__(self):
+        valid_mitigation = {"adaptive", "zne", "pec", "cdr", "none"}
+        valid_scheduling = {"asap", "alap", "coherence_aware", "none"}
+
+        if self.mitigation not in valid_mitigation:
+            raise ValueError(
+                f"Invalid mitigation '{self.mitigation}'. "
+                f"Choose from {valid_mitigation}."
+            )
+        if self.scheduling not in valid_scheduling:
+            raise ValueError(
+                f"Invalid scheduling '{self.scheduling}'. "
+                f"Choose from {valid_scheduling}."
+            )
+
 
 @dataclass
 class QCompilerResult:
@@ -170,6 +185,11 @@ class QCompiler:
         """
         if config is None:
             config = OptimizerConfig()
+
+        if circuit is None:
+            raise ValueError("circuit must not be None")
+        if circuit.num_qubits == 0:
+            raise ValueError("circuit must have at least one qubit")
 
         result = QCompilerResult(
             original_circuit=circuit.copy(),

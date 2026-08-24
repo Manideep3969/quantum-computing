@@ -61,6 +61,16 @@ class TranspileConfig:
     gate_fusion: bool = True
     scheduling_method: str = "coherence_aware"
 
+    def __post_init__(self):
+        if not isinstance(self.optimization_level, int) or not 0 <= self.optimization_level <= 3:
+            raise ValueError(
+                f"optimization_level must be 0-3, got {self.optimization_level}."
+            )
+        if not isinstance(self.seed, int) or self.seed < 0:
+            raise ValueError(
+                f"seed must be a non-negative integer, got {self.seed}."
+            )
+
     def config_key(self) -> str:
         """Generate a unique string key for this configuration."""
         return (

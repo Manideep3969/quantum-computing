@@ -393,3 +393,25 @@ class TestQCompilerWithBackend:
         if result.cutting_result.should_cut and result.subcircuits is not None:
             assert len(result.subcircuits) > 1
             assert result.fidelity_after > 0
+
+
+class TestInputValidation:
+    """Regression tests for input validation (issue #59)."""
+
+    def test_none_circuit_raises(self):
+        compiler = QCompiler()
+        with pytest.raises(ValueError, match="circuit must not be None"):
+            compiler.optimize(None)
+
+    def test_empty_circuit_raises(self):
+        compiler = QCompiler()
+        with pytest.raises(ValueError, match="at least one qubit"):
+            compiler.optimize(QuantumCircuit(0))
+
+    def test_invalid_mitigation_raises(self):
+        with pytest.raises(ValueError, match="Invalid mitigation"):
+            OptimizerConfig(mitigation="invalid")
+
+    def test_invalid_scheduling_raises(self):
+        with pytest.raises(ValueError, match="Invalid scheduling"):
+            OptimizerConfig(scheduling="invalid")
