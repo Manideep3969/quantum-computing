@@ -321,3 +321,24 @@ class TestSearchSpace:
         configs = tuner._generate_configurations()
         opt_levels = {c.optimization_level for c in configs}
         assert opt_levels == {1, 2, 3}
+
+
+class TestTranspileConfigValidation:
+    """Regression tests for TranspileConfig validation (issue #59)."""
+
+    def test_invalid_optimization_level_raises(self):
+        with pytest.raises(ValueError, match="optimization_level"):
+            TranspileConfig(optimization_level=5)
+
+    def test_negative_seed_raises(self):
+        with pytest.raises(ValueError, match="seed"):
+            TranspileConfig(seed=-1)
+
+    def test_valid_config_does_not_raise(self):
+        config = TranspileConfig(
+            routing_method="stochastic",
+            layout_method="dense",
+            optimization_level=2,
+            seed=42,
+        )
+        assert config.optimization_level == 2
