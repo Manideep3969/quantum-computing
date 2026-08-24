@@ -86,13 +86,13 @@ class AutotuneResult:
         top_k_configs: Top-k configurations by estimated fidelity.
     """
 
-    best_config: TranspileConfig = None
+    best_config: TranspileConfig | None = None
     best_estimated_fidelity: float = 0.0
     all_results: dict[str, float] = field(default_factory=dict)
     measured_fidelities: dict[str, float] = field(default_factory=dict)
     circuits_evaluated: int = 0
     search_space_size: int = 0
-    best_circuit: QuantumCircuit = None
+    best_circuit: QuantumCircuit | None = None
     top_k_configs: list[TranspileConfig] = field(default_factory=list)
 
     @property
