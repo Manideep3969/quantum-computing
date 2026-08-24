@@ -79,8 +79,8 @@ class QCompilerResult:
         config: The OptimizerConfig used.
     """
 
-    original_circuit: QuantumCircuit = None
-    optimized_circuit: QuantumCircuit = None
+    original_circuit: QuantumCircuit | None = None
+    optimized_circuit: QuantumCircuit | None = None
     fidelity_before: float = 0.0
     fidelity_after: float = 0.0
     fusion_result: FusionResult | None = None
@@ -91,7 +91,7 @@ class QCompilerResult:
     batch_plan: BatchPlan | None = None
     subcircuits: list[QuantumCircuit] | None = None
     passes_applied: list[str] = field(default_factory=list)
-    config: OptimizerConfig = None
+    config: OptimizerConfig | None = None
 
     @property
     def fidelity_improvement(self) -> float:

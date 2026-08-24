@@ -58,10 +58,10 @@ class FusionResult:
         improvement: Fidelity improvement (after - before).
     """
 
-    original_circuit: QuantumCircuit = None
-    optimized_circuit: QuantumCircuit = None
-    original_metrics: CircuitMetrics = None
-    optimized_metrics: CircuitMetrics = None
+    original_circuit: QuantumCircuit | None = None
+    optimized_circuit: QuantumCircuit | None = None
+    original_metrics: CircuitMetrics | None = None
+    optimized_metrics: CircuitMetrics | None = None
     chains_fused: int = 0
     total_gates_before: int = 0
     total_gates_after: int = 0

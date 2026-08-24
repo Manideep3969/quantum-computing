@@ -53,7 +53,7 @@ class ScheduleResult:
         depth_optimized: Circuit depth with the chosen method.
     """
 
-    circuit: QuantumCircuit = None
+    circuit: QuantumCircuit | None = None
     idle_times: dict[int, float] = field(default_factory=dict)
     estimated_fidelity_asap: float = 0.0
     estimated_fidelity_alap: float = 0.0
