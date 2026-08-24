@@ -49,6 +49,7 @@ from qc_compiler.utils import (
     DEFAULT_T2_TIME,
     DEFAULT_TWO_QUBIT_ERROR,
     TWO_QUBIT_GATES,
+    qubit_index,
 )
 
 
@@ -367,7 +368,7 @@ class CircuitCutter:
         for idx, instr in enumerate(circuit.data):
             gate_name = instr.operation.name
             qubits = tuple(
-                circuit.find_bit(q).index for q in instr.qubits
+                qubit_index(circuit, q) for q in instr.qubits
             )
 
             if gate_name in TWO_QUBIT_GATES and len(qubits) == 2:
@@ -596,7 +597,7 @@ class CircuitCutter:
 
         for idx, instr in enumerate(circuit.data):
             qubits = tuple(
-                circuit.find_bit(q).index for q in instr.qubits
+                qubit_index(circuit, q) for q in instr.qubits
             )
             if len(qubits) == 2:
                 q0, q1 = qubits
@@ -638,7 +639,7 @@ class CircuitCutter:
 
         for idx, instr in enumerate(circuit.data):
             gate_qubits = tuple(
-                circuit.find_bit(q).index for q in instr.qubits
+                qubit_index(circuit, q) for q in instr.qubits
             )
 
             if idx in cut_gate_indices:

@@ -37,6 +37,7 @@ from qiskit.quantum_info import Operator
 from qiskit.synthesis import OneQubitEulerDecomposer
 
 from qc_compiler.cost_model import CircuitMetrics, CostModel
+from qc_compiler.utils import qubit_index
 
 
 @dataclass
@@ -302,7 +303,7 @@ class GateFusion:
 
                 affected_qubits = set()
                 for q in instr.qubits:
-                    qidx = circuit.find_bit(q).index
+                    qidx = qubit_index(circuit, q)
                     affected_qubits.add(qidx)
                 for q in affected_qubits:
                     if q in active_chains:
@@ -314,7 +315,7 @@ class GateFusion:
                 continue
 
             if len(instr.qubits) == 1:
-                qubit_idx = circuit.find_bit(instr.qubits[0]).index
+                qubit_idx = qubit_index(circuit, instr.qubits[0])
 
                 if qubit_idx in active_chains:
                     active_chains[qubit_idx][2].append(idx)
