@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from qiskit import QuantumCircuit
 
 from qc_compiler.cost_model import CostModel
+from qc_compiler.utils import qubit_index
 
 
 @dataclass
@@ -298,7 +299,7 @@ class CircuitBatcher:
             gate_name = instr.operation.name
             if gate_name in ("measure", "barrier", "reset", "snapshot"):
                 continue
-            qubits = tuple(circuit.find_bit(q).index for q in instr.qubits)
+            qubits = tuple(qubit_index(circuit, q) for q in instr.qubits)
             params = tuple(
                 float(p) if hasattr(p, '__float__') else str(p)
                 for p in instr.operation.params
@@ -328,7 +329,7 @@ class CircuitBatcher:
             if instr.operation.name == "measure":
                 measure_indices.add(idx)
                 for q in instr.qubits:
-                    measured_qubits.add(circuit.find_bit(q).index)
+                    measured_qubits.add(qubit_index(circuit, q))
 
         if not measured_qubits:
             return "none"
@@ -347,7 +348,7 @@ class CircuitBatcher:
             if instr.operation.name in ("measure", "barrier", "reset", "snapshot"):
                 continue
             if len(instr.qubits) == 1:
-                qubit_idx = circuit.find_bit(instr.qubits[0]).index
+                qubit_idx = qubit_index(circuit, instr.qubits[0])
                 if qubit_idx in measured_qubits:
                     pre_measure_gates[qubit_idx].append(
                         instr.operation.name

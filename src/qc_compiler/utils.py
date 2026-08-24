@@ -21,6 +21,35 @@ DEFAULT_SINGLE_QUBIT_GATE_TIME = 50e-9
 DEFAULT_TWO_QUBIT_GATE_TIME = 300e-9
 
 
+def qubit_index(circuit: QuantumCircuit, qubit) -> int:
+    """Get the integer index of a qubit in a circuit.
+
+    Uses circuit.find_bit() for compatibility, but can be updated
+    if Qiskit deprecates find_bit in a future release.
+
+    Args:
+        circuit: The quantum circuit.
+        qubit: A qubit reference from circuit.data.
+
+    Returns:
+        Integer index of the qubit.
+    """
+    return circuit.find_bit(qubit).index
+
+
+def clbit_index(circuit: QuantumCircuit, clbit) -> int:
+    """Get the integer index of a classical bit in a circuit.
+
+    Args:
+        circuit: The quantum circuit.
+        clbit: A classical bit reference from circuit.data.
+
+    Returns:
+        Integer index of the classical bit.
+    """
+    return circuit.find_bit(clbit).index
+
+
 def get_backend_properties(backend: BackendV2) -> dict:
     """Extract calibration properties from a quantum backend.
 

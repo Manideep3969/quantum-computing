@@ -26,6 +26,7 @@ from qc_compiler.utils import (
     TWO_QUBIT_GATES,
     compute_circuit_depth,
     get_backend_properties,
+    qubit_index,
 )
 
 SINGLE_QUBIT_GATES = {"id", "rz", "sx", "x", "h", "s", "t", "p", "u", "u1", "u2", "u3"}
@@ -212,7 +213,7 @@ class CostModel:
             for instr in circuit.data:
                 gate_name = instr.operation.name
                 qubits = tuple(
-                    circuit.find_bit(q).index for q in instr.qubits
+                    qubit_index(circuit, q) for q in instr.qubits
                 )
                 if len(qubits) == 2 and gate_name in TWO_QUBIT_GATES:
                     fidelity = self._get_gate_fidelity_for_pair(
@@ -473,7 +474,7 @@ class CostModel:
         for instr in circuit.data:
             if instr.operation.name == "measure":
                 for qubit in instr.qubits:
-                    measured.add(circuit.find_bit(qubit).index)
+                    measured.add(qubit_index(circuit, qubit))
         if not measured:
             return []
         return sorted(measured)

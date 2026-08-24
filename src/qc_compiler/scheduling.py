@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from qiskit import QuantumCircuit
 
 from qc_compiler.cost_model import CostModel
-from qc_compiler.utils import DEFAULT_SINGLE_QUBIT_GATE_TIME
+from qc_compiler.utils import DEFAULT_SINGLE_QUBIT_GATE_TIME, clbit_index, qubit_index
 
 
 @dataclass
@@ -214,14 +214,14 @@ class CoherenceAwareScheduler:
 
         for instr in circuit.data:
             gate = instr.operation
-            qubits = [circuit.find_bit(q).index for q in instr.qubits]
+            qubits = [qubit_index(circuit, q) for q in instr.qubits]
 
             earliest_cycle = max(qubit_next_cycle[q] for q in qubits) if qubits else 0
 
             gate_duration = self._get_gate_duration(gate.name, qubits)
 
             target_qubits = [circuit.qubits[q] for q in qubits]
-            target_clbits = [circuit.find_bit(c).index for c in instr.clbits]
+            target_clbits = [clbit_index(circuit, c) for c in instr.clbits]
             clbit_refs = [scheduled.clbits[i] for i in target_clbits] if target_clbits else []
 
             scheduled.append(gate, target_qubits, clbit_refs)
@@ -271,7 +271,7 @@ class CoherenceAwareScheduler:
 
         for i in range(len(circuit.data) - 1, -1, -1):
             instr = circuit.data[i]
-            qubits = [circuit.find_bit(q).index for q in instr.qubits]
+            qubits = [qubit_index(circuit, q) for q in instr.qubits]
 
             if not qubits:
                 gate_latest_start[i] = 0
@@ -299,9 +299,9 @@ class CoherenceAwareScheduler:
         for i in gate_order:
             instr = circuit.data[i]
             gate = instr.operation
-            qubits = [circuit.find_bit(q).index for q in instr.qubits]
+            qubits = [qubit_index(circuit, q) for q in instr.qubits]
             target_qubits = [circuit.qubits[q] for q in qubits]
-            target_clbits = [circuit.find_bit(c).index for c in instr.clbits]
+            target_clbits = [clbit_index(circuit, c) for c in instr.clbits]
             clbit_refs = [scheduled.clbits[j] for j in target_clbits] if target_clbits else []
 
             scheduled.append(gate, target_qubits, clbit_refs)
@@ -351,13 +351,13 @@ class CoherenceAwareScheduler:
 
         qubit_first_gate = [-1] * circuit.num_qubits
         for i, instr in enumerate(circuit.data):
-            qubits = [circuit.find_bit(q).index for q in instr.qubits]
+            qubits = [qubit_index(circuit, q) for q in instr.qubits]
             for q in qubits:
                 if qubit_first_gate[q] == -1:
                     qubit_first_gate[q] = i
 
         for i, instr in enumerate(circuit.data):
-            qubits = [circuit.find_bit(q).index for q in instr.qubits]
+            qubits = [qubit_index(circuit, q) for q in instr.qubits]
             for q in qubits:
                 if qubit_latest_gate[q] >= 0:
                     predecessors[i].add(qubit_latest_gate[q])
@@ -365,9 +365,9 @@ class CoherenceAwareScheduler:
 
         for i in range(num_gates - 1):
             if circuit.data[i].operation.name == "barrier":
-                for q in [circuit.find_bit(q).index for q in circuit.data[i].qubits]:
+                for q in [qubit_index(circuit, q) for q in circuit.data[i].qubits]:
                     for j in range(i + 1, num_gates):
-                        jqubits = [circuit.find_bit(q).index for q in circuit.data[j].qubits]
+                        jqubits = [qubit_index(circuit, q) for q in circuit.data[j].qubits]
                         if q in jqubits:
                             predecessors[j].add(i)
 
@@ -391,15 +391,15 @@ class CoherenceAwareScheduler:
             if not ready:
                 break
 
-            ready.sort(key=lambda i: min(t2_priority.get(q, float('inf')) for q in [circuit.find_bit(q).index for q in circuit.data[i].qubits]) if circuit.data[i].qubits else float('inf'))
+            ready.sort(key=lambda i: min(t2_priority.get(q, float('inf')) for q in [qubit_index(circuit, q) for q in circuit.data[i].qubits]) if circuit.data[i].qubits else float('inf'))
 
             gate_idx = ready[0]
 
             instr = circuit.data[gate_idx]
             gate = instr.operation
-            qubits = [circuit.find_bit(q).index for q in instr.qubits]
+            qubits = [qubit_index(circuit, q) for q in instr.qubits]
             target_qubits = [circuit.qubits[q] for q in qubits]
-            target_clbits = [circuit.find_bit(c).index for c in instr.clbits]
+            target_clbits = [clbit_index(circuit, c) for c in instr.clbits]
             clbit_refs = [scheduled.clbits[j] for j in target_clbits] if target_clbits else []
 
             scheduled.append(gate, target_qubits, clbit_refs)
@@ -440,7 +440,7 @@ class CoherenceAwareScheduler:
         qubit_active_cycles = {q: 0 for q in range(circuit.num_qubits)}
         for instr in circuit.data:
             for qubit in instr.qubits:
-                qidx = circuit.find_bit(qubit).index
+                qidx = qubit_index(circuit, qubit)
                 qubit_active_cycles[qidx] += 1
 
         idle_times = {}
@@ -464,7 +464,7 @@ class CoherenceAwareScheduler:
         starts = []
 
         for instr in circuit.data:
-            qubits = [circuit.find_bit(q).index for q in instr.qubits]
+            qubits = [qubit_index(circuit, q) for q in instr.qubits]
             if not qubits:
                 starts.append(0)
                 continue

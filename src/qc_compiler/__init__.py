@@ -28,11 +28,13 @@ from qc_compiler.utils import (
     DEFAULT_TWO_QUBIT_ERROR,
     DEFAULT_TWO_QUBIT_GATE_TIME,
     TWO_QUBIT_GATES,
+    clbit_index,
     compute_circuit_depth,
     compute_cnot_count,
     compute_idle_fraction,
     get_avg_gate_time,
     get_backend_properties,
+    qubit_index,
 )
 
 __all__ = [
@@ -63,9 +65,11 @@ __all__ = [
     "QCompilerResult",
     "ScheduleResult",
     "TranspileConfig",
+    "clbit_index",
     "compute_circuit_depth",
     "compute_cnot_count",
     "compute_idle_fraction",
     "get_avg_gate_time",
     "get_backend_properties",
+    "qubit_index",
 ]
