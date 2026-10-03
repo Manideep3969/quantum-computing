@@ -13,6 +13,7 @@ Our quantum cost model computes:
     Total_Error = Gate_Errors + Decoherence_Errors + Measurement_Errors
 """
 
+import math
 from dataclasses import dataclass, field
 
 from qiskit import QuantumCircuit
@@ -407,7 +408,7 @@ class CostModel:
                 t2 = max(self.device.t2_times.values())
 
             total_time = depth * avg_gate_time
-            fidelity = float(min(1.0, 2.0**(-total_time / t2)))
+            fidelity = float(min(1.0, math.exp(-total_time / t2)))
             product *= fidelity
 
         return 1.0 - product
@@ -421,7 +422,7 @@ class CostModel:
         """
         depth = compute_circuit_depth(circuit)
         total_time = depth * DEFAULT_SINGLE_QUBIT_GATE_TIME
-        fidelity = float(2.0 ** (-total_time / DEFAULT_T2_TIME))
+        fidelity = float(math.exp(-total_time / DEFAULT_T2_TIME))
         product = fidelity**circuit.num_qubits
 
         return 1.0 - product
