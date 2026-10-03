@@ -22,14 +22,14 @@ class TestTranspileConfig:
 
     def test_custom_values(self):
         config = TranspileConfig(
-            routing_method="stochastic",
+            routing_method="basic",
             layout_method="trivial",
             optimization_level=1,
             seed=42,
             gate_fusion=False,
             scheduling_method="alap",
         )
-        assert config.routing_method == "stochastic"
+        assert config.routing_method == "basic"
         assert config.layout_method == "trivial"
         assert config.optimization_level == 1
         assert config.seed == 42
@@ -160,7 +160,7 @@ class TestAutoTunerNoBackend:
         assert all(isinstance(c, TranspileConfig) for c in configs)
         routing_methods = {c.routing_method for c in configs}
         assert "sabre" in routing_methods
-        assert "stochastic" in routing_methods
+        assert "basic" in routing_methods
 
     def test_estimate_fidelity(self, tuner):
         qc = QuantumCircuit(2)
@@ -292,8 +292,21 @@ class TestAutoTunerWithBackend:
         result = tuner_with_backend.search(
             qc, circuit_family="test_best_circuit"
         )
-        if result.best_circuit is not None:
-            assert result.best_circuit.num_qubits == qc.num_qubits
+        assert result.best_circuit is not None
+        assert result.best_circuit.num_qubits == tuner_with_backend.backend.num_qubits
+
+    def test_cached_search_sets_best_circuit(self, tuner_with_backend):
+        """Issue #39: cache fast-path must also populate best_circuit."""
+        qc = QuantumCircuit(2)
+        qc.h(0)
+        qc.cx(0, 1)
+        tuner_with_backend.search(qc, circuit_family="test_cached_circuit")
+        result = tuner_with_backend.search(
+            qc, circuit_family="test_cached_circuit"
+        )
+        assert "cached" in result.all_results
+        assert result.best_circuit is not None
+        assert result.best_circuit.num_qubits == tuner_with_backend.backend.num_qubits
 
 
 class TestSearchSpace:
@@ -308,13 +321,13 @@ class TestSearchSpace:
         tuner = AutoTuner(cost_model=CostModel())
         configs = tuner._generate_configurations()
         routing_methods = {c.routing_method for c in configs}
-        assert routing_methods == {"stochastic", "sabre"}
+        assert routing_methods == {"basic", "sabre"}
 
     def test_search_space_covers_all_layout_methods(self):
         tuner = AutoTuner(cost_model=CostModel())
         configs = tuner._generate_configurations()
         layout_methods = {c.layout_method for c in configs}
-        assert layout_methods == {"dense", "vf2_layout"}
+        assert layout_methods == {"dense", "trivial"}
 
     def test_search_space_covers_all_optimization_levels(self):
         tuner = AutoTuner(cost_model=CostModel())
@@ -336,7 +349,7 @@ class TestTranspileConfigValidation:
 
     def test_valid_config_does_not_raise(self):
         config = TranspileConfig(
-            routing_method="stochastic",
+            routing_method="basic",
             layout_method="dense",
             optimization_level=2,
             seed=42,

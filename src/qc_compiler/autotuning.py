@@ -5,8 +5,8 @@ this module searches over transpilation configurations to find the
 device-optimal one, then caches results for similar circuit families.
 
 The search space includes:
-    - routing_method: stochastic, sabre
-    - layout_method: dense, vf2_layout
+    - routing_method: sabre, basic
+    - layout_method: dense, trivial
     - optimization_level: 1, 2, 3
     - seed: 0, 1, 2 (randomness in routing/layout)
     - gate_fusion: on/off
@@ -31,6 +31,7 @@ References:
 """
 
 import json
+import logging
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -39,16 +40,18 @@ from qiskit.providers import BackendV2
 
 from qc_compiler.cost_model import CostModel
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class TranspileConfig:
     """A transpiler configuration to evaluate.
 
     Attributes:
-        routing_method: Routing method ('stochastic', 'vf2', 'sabre').
-        layout_method: Layout method ('trivial', 'dense', 'vf2_layout').
+        routing_method: Routing method ('sabre', 'basic').
+        layout_method: Layout method ('trivial', 'dense', 'sabre').
         optimization_level: Qiskit optimization level (0-3).
-        seed: Random seed for stochastic methods.
+        seed: Random seed for the transpiler.
         gate_fusion: Whether to apply gate fusion after transpilation.
         scheduling_method: Scheduling method ('asap', 'alap',
             'coherence_aware').
@@ -180,15 +183,16 @@ class AutoTuner:
 
         cached_config = self._load_cached(circuit_family)
         if cached_config is not None:
-            estimated_fidelity = self._estimate_fidelity(
+            cached_result = self._estimate_fidelity_with_circuit(
                 circuit, cached_config
             )
             return AutotuneResult(
                 best_config=cached_config,
-                best_estimated_fidelity=estimated_fidelity,
-                all_results={"cached": estimated_fidelity},
+                best_estimated_fidelity=cached_result["fidelity"],
+                all_results={"cached": cached_result["fidelity"]},
                 circuits_evaluated=1,
                 search_space_size=search_space_size,
+                best_circuit=cached_result.get("circuit"),
             )
 
         all_results = {}
@@ -277,8 +281,8 @@ class AutoTuner:
         Returns:
             List of TranspileConfig objects to evaluate.
         """
-        routing_methods = ["stochastic", "sabre"]
-        layout_methods = ["dense", "vf2_layout"]
+        routing_methods = ["sabre", "basic"]
+        layout_methods = ["dense", "trivial"]
         optimization_levels = [1, 2, 3]
         seeds = list(range(3))
         fusion_options = [True, False]
@@ -331,8 +335,12 @@ class AutoTuner:
                     transpiled
                 ).total_fidelity
                 return {"fidelity": fidelity, "circuit": transpiled}
-            except Exception:  # noqa: S110, BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "Transpilation failed for config %s: %s",
+                    config.config_key(),
+                    exc,
+                )
 
         fidelity = self._estimate_fidelity(circuit, config)
         return {"fidelity": fidelity, "circuit": None}
@@ -386,13 +394,11 @@ class AutoTuner:
 
         routing_penalty = {
             "sabre": 0.0,
-            "stochastic": -0.003,
-            "vf2": -0.001,
+            "basic": -0.003,
         }.get(config.routing_method, 0.0)
 
         layout_penalty = {
             "dense": 0.0,
-            "vf2_layout": -0.002,
             "trivial": -0.01,
         }.get(config.layout_method, 0.0)
 
