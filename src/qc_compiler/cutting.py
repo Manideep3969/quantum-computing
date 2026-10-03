@@ -37,6 +37,7 @@ References:
         for large quantum circuit evaluations. ACM TODAES.
 """
 
+import math
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -542,7 +543,7 @@ class CircuitCutter:
             depth = max(1, circuit.depth() // num_groups)
             avg_t2 = self._avg_t2()
             decoherence_error = 1 - float(
-                2.0 ** (-depth * DEFAULT_SINGLE_QUBIT_GATE_TIME / avg_t2)
+                math.exp(-depth * DEFAULT_SINGLE_QUBIT_GATE_TIME / avg_t2)
             ) if avg_t2 > 0 else DEFAULT_TWO_QUBIT_ERROR
 
             group_error = 1 - (1 - gate_error) * (1 - decoherence_error)

@@ -150,6 +150,41 @@ class TestCostModelNoBackend:
         error = model.estimate_decoherence_error(qc)
         assert error == 0.0
 
+    def test_decoherence_uses_exponential_not_power_of_two(self):
+        """Issue #35: decoherence must use exp(-t/T2), not 2^(-t/T2)."""
+        import math
+
+        model = CostModel()
+        device = DeviceCharacterization(
+            backend_name="test",
+            num_qubits=1,
+            t2_times={0: 100e-6},
+            gate_lengths={("sx", (0,)): 50e-9},
+        )
+        model.device = device
+        qc = QuantumCircuit(1)
+        qc.h(0)
+        depth = qc.depth()
+        error = model.estimate_decoherence_error(qc)
+
+        expected = 1.0 - math.exp(-depth * 50e-9 / 100e-6)
+        power_of_two = 1.0 - 2.0 ** (-depth * 50e-9 / 100e-6)
+        assert abs(error - expected) < 1e-12
+        assert abs(error - power_of_two) > 1e-12
+
+    def test_decoherence_default_uses_exponential(self):
+        """Issue #35: default path must also use exp(-t/T2)."""
+        import math
+
+        model = CostModel()
+        qc = QuantumCircuit(1)
+        qc.h(0)
+        depth = qc.depth()
+        error = model.estimate_decoherence_error(qc)
+
+        expected = 1.0 - math.exp(-depth * 50e-9 / 150e-6)
+        assert abs(error - expected) < 1e-12
+
     def test_measurement_error_bell_state(self):
         model = CostModel()
         qc = QuantumCircuit(2)
