@@ -1,5 +1,11 @@
 # Paper Outline: Hardware-Aware Quantum Circuit Optimization
 
+> **STATUS — PROPOSAL / OUTLINE (not a results paper).**
+> All numerical performance ranges in this document are *projected targets*
+> for planned experiments. No hardware benchmarks have been run yet;
+> `results/` and `benchmarks/` contain only placeholders. Framework
+> features marked "not implemented" are described as future work.
+
 **Working Title:** Hardware-Aware Quantum Circuit Optimization: Bridging Classical Compilation Techniques to NISQ Devices
 
 **Authors:** Manideep
@@ -12,7 +18,9 @@
 
 ## 1. Abstract (to write last)
 
-We draw a systematic analogy between classical GPU compilation for deep learning workloads and quantum circuit compilation for NISQ devices. We identify six direct mappings between established GPU optimization techniques and their quantum counterparts — kernel fusion ↔ gate fusion, model parallelism ↔ circuit cutting, mixed-precision training ↔ error mitigation, memory-bandwidth optimization ↔ decoherence budgeting, batched inference ↔ circuit batching, and kernel autotuning ↔ hardware-aware transpilation. For each mapping, we formalize the analogy, adapt the classical technique, and benchmark the quantum adaptation on IBM Quantum hardware across standard circuit families (QFT, QAOA, VQE ansätze). Our results demonstrate that applying GPU-inspired optimization principles yields 1.3–2.8× reduction in circuit depth, 15–40% improvement in expectation value fidelity, and up to 3.5× throughput improvement via circuit batching. We release an open-source framework, `qc-compiler`, that implements these optimizations and integrates with Qiskit Transpiler.
+> **Status:** This is a paper *proposal/outline*. The numerical ranges below are *targets* for planned experiments, not measured results. Experimental validation is pending (see Section 11).
+
+We draw a systematic analogy between classical GPU compilation for deep learning workloads and quantum circuit compilation for NISQ devices. We identify six direct mappings between established GPU optimization techniques and their quantum counterparts — kernel fusion ↔ gate fusion, model parallelism ↔ circuit cutting, mixed-precision training ↔ error mitigation, memory-bandwidth optimization ↔ decoherence budgeting, batched inference ↔ circuit batching, and kernel autotuning ↔ hardware-aware transpilation. For each mapping, we formalize the analogy, adapt the classical technique, and plan to benchmark the quantum adaptation on IBM Quantum hardware across standard circuit families (QFT, QAOA, VQE ansätze). Our *target* outcomes are 1.3–2.8× reduction in circuit depth, 15–40% improvement in expectation value fidelity, and up to 3.5× throughput improvement via circuit batching. We release an open-source framework, `qc-compiler`, that implements these optimizations and integrates with Qiskit Transpiler.
 
 ---
 
@@ -39,8 +47,8 @@ We draw a systematic analogy between classical GPU compilation for deep learning
 
 1. **Formal analogy** between classical GPU and quantum circuit optimization with mathematical grounding
 2. **Six adapted techniques** with concrete algorithms and implementations
-3. **Comprehensive benchmarks** on IBM Quantum hardware (ibm_brisbane, ibm_sherbrooke, ibm_osaka)
-4. **Open-source framework** (`qc-compiler`) integrating all optimizations with Qiskit
+3. **Open-source framework** (`qc-compiler`) integrating all optimizations with Qiskit
+4. **Experimental evaluation plan** with target benchmarks on IBM Quantum hardware (ibm_brisbane, ibm_sherbrooke, ibm_osaka) — *results pending*
 
 ### 2.4 Paper Organization
 
@@ -97,13 +105,16 @@ Total_Latency = Kernel_Compute + Memory_Transfer + Synchronization_Overhead
 ### 4.2 Cost Model for Quantum Circuit Execution
 
 ```
-Total_Error = Gate_Errors + Decoherence_Errors + Measurement_Errors + Crosstalk_Errors
+Total_Error = Gate_Errors + Decoherence_Errors + Measurement_Errors
 ```
 
 - Gate errors: Σᵢ (1 - Fᵢ) for each gate in circuit
 - Decoherence errors: f(d, T₁, T₂) where d = circuit depth
 - Measurement errors: readout fidelity per qubit
-- Crosstalk: correlated errors from simultaneous gate execution
+
+> **Implementation note:** The current cost model implements the three terms
+> above. Crosstalk-aware error modeling (correlated errors from simultaneous
+> gate execution) is not implemented and is listed as future work.
 
 ### 4.3 Unified Optimization Objective
 
@@ -144,7 +155,9 @@ CUDA fuses sequential kernels (e.g., conv → bn → relu) into a single kernel 
 - Gate count (relevant for error accumulation)
 - Total gate error from Σ(1 - Fᵢ) to (1 - F_fused)
 
-**Two-qubit gate fusion with single-qubit absorption:** When a two-qubit gate is surrounded by single-qubit gates, the single-qubit gates can be absorbed into the two-qubit gate parameters, reducing total gate count.
+> **Implementation note:** The current implementation performs single-qubit
+> chain fusion plus cost-guided fusion. Two-qubit gate fusion with
+> single-qubit absorption is not implemented and is listed as future work.
 
 ### 5.3 Algorithm
 
@@ -157,11 +170,7 @@ OUTPUT: Optimized circuit C'
    a. Identify maximal chains of single-qubit gates on q
    b. For each chain, compute product gate U = Uₖ · ... · U₁
    c. If U decomposes into ≤ K₁ basis gates (K₁ < original chain length), replace chain
-3. For each two-qubit gate g connecting qᵢ, qⱼ:
-   a. Absorb adjacent single-qubit gates on qᵢ and qⱼ into g's parameters
-   b. If resulting gate is in native gate set, keep absorbed version
-   c. Otherwise, decompose absorbed gate and re-optimize locally
-4. Re-schedule gates to minimize circuit depth under hardware topology constraints
+3. Re-schedule gates to minimize circuit depth under hardware topology constraints
 ```
 
 ### 5.4 Expected Impact
@@ -223,6 +232,11 @@ OUTPUT: Partitioned sub-circuits or uncut circuit, whichever minimizes estimated
 - Even within device limits, cutting may reduce error for circuits with heavy SWAP overhead
 - Decision framework prevents cutting when it actually hurts (novel)
 
+> **Implementation note:** The cost-benefit cutting decision and subcircuit
+> generation are implemented. Full quasi-probability decomposition (QPD)
+> reconstruction is a placeholder that emits a warning; it does not track
+> term signs/coefficients and is not yet suitable for accurate results.
+
 ---
 
 ## 7. Optimization 3: Error Mitigation as Mixed Precision (Analogous to Mixed-Precision Training)
@@ -271,6 +285,11 @@ OUTPUT: Execution plan (which subcircuits get which noise scales and shots)
 - Same or better fidelity with fewer quantum resources
 - Directly analogous to gradient scaling in mixed-precision training
 
+> **Implementation note:** Adaptive shot allocation and ZNE (linear and
+> Richardson extrapolation) are implemented. PEC and CDR are placeholder
+> implementations that emit warnings and return marked placeholder results;
+> full PEC/CDR are future work.
+
 ---
 
 ## 8. Optimization 4: Decoherence Budget Optimization (Analogous to Memory-Bandwidth Optimization)
@@ -305,12 +324,22 @@ OUTPUT: Schedule S minimizing total decoherence cost
    a. Compute idle windows from both schedules
    b. If q has high T₂, idle windows are less costly → more flexibility
    c. If q has low T₂, minimize idle time → schedule gates on q early
-4. Formulate as constraint satisfaction:
-   minimize Σ_q (1 - exp(-idle_time_q × gate_time / T₂_q))
-   subject to: gate dependencies, topology constraints, single-gate-per-qubit-per-cycle
-5. Use heuristic: schedule critical-path qubits (low T₂) first, delay non-critical qubits
-6. Output optimized schedule
+4. Greedy dependency-aware list scheduling:
+   ready ← gates whose predecessors are scheduled
+   sort ready by T₂ priority (low-T₂ qubits first)
+   schedule the highest-priority ready gate at its earliest cycle
+5. Output optimized schedule
 ```
+
+> **Implementation note:** The current implementation is a dependency-aware
+> greedy list scheduler that prioritizes low-T₂ qubits. A constraint-
+> satisfaction/ILP formulation of the objective below is not implemented
+> and is listed as future work.
+>
+> Target objective (for future exact optimization):
+> `minimize Σ_q (1 - exp(-idle_time_q × gate_time / T₂_q))`
+> subject to gate dependencies, topology constraints, and
+> single-gate-per-qubit-per-cycle.
 
 ### 8.4 Expected Impact
 
@@ -411,17 +440,24 @@ Algorithm:
 
 ---
 
-## 11. Experimental Evaluation
+## 11. Experimental Evaluation (planned — results pending)
+
+> **Status:** No experiments have been run yet. This section describes the
+> planned protocol. All "Expected result" numbers below are *targets*, not
+> measured outcomes. `results/` currently contains only placeholders.
 
 ### 11.1 Experimental Setup
 
 #### Hardware
-| Device | Qubits | Topology | Avg CNOT Fidelity | Avg T₂ | Status |
+| Device | Qubits | Topology | Typical CNOT Fidelity | Typical T₂ | Status |
 |---|---|---|---|---|---|
-| ibm_brisbane | 127 | Heavy-hex | ~99.0% | ~150 μs | Free tier |
-| ibm_sherbrooke | 127 | Heavy-hex | ~99.2% | ~200 μs | Free tier |
-| ibm_osaka | 127 | Heavy-hex | ~99.1% | ~180 μs | Free tier |
+| ibm_brisbane | 127 | Heavy-hex | ~99.0% | ~150 μs | Free tier (planned) |
+| ibm_sherbrooke | 127 | Heavy-hex | ~99.2% | ~200 μs | Free tier (planned) |
+| ibm_osaka | 127 | Heavy-hex | ~99.1% | ~180 μs | Free tier (planned) |
 | Aer simulator | ∞ | Full | 100% | ∞ | Local |
+
+Values in this table are typical published device characteristics, not
+measured results from this work.
 
 #### Benchmark Circuits
 | Circuit Family | Sizes (qubits) | Purpose |
@@ -580,12 +616,18 @@ Algorithm:
 - Apply framework to error-corrected regime (logical gate fusion ↔ kernel fusion at logical level)
 - Investigate dynamic circuit cutting (analogous to dynamic batching in LLM serving)
 - Develop persistent autotuning cache across device calibrations
+- Implement full QPD reconstruction for circuit cutting (replacing the current placeholder)
+- Implement true PEC and CDR error mitigation (replacing the current placeholders)
+- Implement two-qubit gate fusion with single-qubit absorption
+- Add crosstalk modeling to the cost model
+- Replace the heuristic coherence-aware scheduler with an exact
+  constraint-satisfaction / ILP formulation of the stated objective
 
 ---
 
 ## 13. Conclusion
 
-We have demonstrated that classical GPU compilation techniques — kernel fusion, model parallelism, mixed precision, memory optimization, batching, and autotuning — have direct quantum analogs that yield measurable improvements on NISQ hardware. By formalizing these analogies and implementing them in the open-source `qc-compiler` framework, we provide a bridge for systems and hardware engineers to apply their expertise to quantum circuit optimization. Our benchmarks on IBM Quantum hardware show consistent improvements across circuit families, validating the principle that quantum compilation can benefit from decades of classical optimization research.
+We argue that classical GPU compilation techniques — kernel fusion, model parallelism, mixed precision, memory optimization, batching, and autotuning — have direct quantum analogs with the potential to yield measurable improvements on NISQ hardware. By formalizing these analogies and implementing them in the open-source `qc-compiler` framework, we provide a bridge for systems and hardware engineers to apply their expertise to quantum circuit optimization. The framework implements all six transformations; experimental validation on IBM Quantum hardware is planned as the next step to quantify their impact across circuit families.
 
 ---
 

@@ -1,7 +1,8 @@
 """Unified error cost model for quantum circuits on NISQ devices.
 
 Computes estimated total error for a given circuit on a given device,
-considering gate errors, decoherence, measurement errors, and crosstalk.
+considering gate errors, decoherence, and measurement errors. Crosstalk
+modeling is not currently implemented.
 
 This is the foundation of the qc-compiler framework. Every optimization
 module queries the cost model to make decisions about when and how to
